@@ -1,0 +1,6 @@
+@DergiMBackend_HostAddress = http://localhost:5207
+
+GET {{DergiMBackend_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
