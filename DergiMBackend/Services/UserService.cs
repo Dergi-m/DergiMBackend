@@ -109,7 +109,6 @@ namespace DergiMBackend.Services
 				{
 					if (!await _roleManager.RoleExistsAsync(SD.RoleUSER))
 					{
-						await _roleManager.CreateAsync(new IdentityRole(SD.RoleMANAGER));
 						await _roleManager.CreateAsync(new IdentityRole(SD.RoleADMIN));
 						await _roleManager.CreateAsync(new IdentityRole(SD.RoleUSER));
 					}
@@ -173,7 +172,7 @@ namespace DergiMBackend.Services
 		{
 			var user = await _db.Users.FirstOrDefaultAsync(u => u.UserName == username);
 			var result = _mapper.Map<UserDto>(user);
-			result.Roles = await _userManager.GetRolesAsync(user);
+			result.Role = (await _userManager.GetRolesAsync(user))[0];
 			return result;
 		}
 	}
