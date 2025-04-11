@@ -151,10 +151,15 @@ namespace DergiMBackend.Services
 			return null;
 		}
 
-		public async Task<IEnumerable<UserDto>> GetUsersAsync()
+		public async Task<IEnumerable<UserDto>> GetUsersAsync(int? organisationId = null)
 		{
 			var users = await _db.Users.ToListAsync();
 			var result = new List<UserDto>();
+
+			if (organisationId != null)
+			{
+				users = users.Where(u => u.OrganisationId == organisationId.Value).ToList();
+			}
 
 			foreach (var user in users)
 			{

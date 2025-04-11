@@ -4,7 +4,7 @@ namespace DergiMBackend.Services.IServices
 {
 	public interface IUserService
 	{
-		Task<IEnumerable<UserDto>> GetUsersAsync();
+		Task<IEnumerable<UserDto>> GetUsersAsync(int? organisationId = null);
 		Task<UserDto> GetUserAsync(string username);
 		bool IsUniqueUser(string username);
 		Task<TokenDto> Login(LoginRequestDto loginRequestDto);

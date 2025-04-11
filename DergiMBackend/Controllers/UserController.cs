@@ -24,7 +24,8 @@ namespace DergiMBackend.Controllers
 		{
 			try
 			{
-				var users = await _userService.GetUsersAsync();
+				var users = await _userService.GetUsersAsync(organisationId);
+
 				if (users == null)
 				{
 					throw new Exception("Unexpected result - no users found");
