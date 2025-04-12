@@ -109,7 +109,6 @@ namespace DergiMBackend.Services
 				{
 					if (!await _roleManager.RoleExistsAsync(SD.RoleUSER))
 					{
-						await _roleManager.CreateAsync(new IdentityRole(SD.RoleMANAGER));
 						await _roleManager.CreateAsync(new IdentityRole(SD.RoleADMIN));
 						await _roleManager.CreateAsync(new IdentityRole(SD.RoleUSER));
 					}
@@ -152,10 +151,15 @@ namespace DergiMBackend.Services
 			return null;
 		}
 
-		public async Task<IEnumerable<UserDto>> GetUsersAsync()
+		public async Task<IEnumerable<UserDto>> GetUsersAsync(int? organisationId = null)
 		{
 			var users = await _db.Users.ToListAsync();
 			var result = new List<UserDto>();
+
+			if (organisationId != null)
+			{
+				users = users.Where(u => u.OrganisationId == organisationId.Value).ToList();
+			}
 
 			foreach (var user in users)
 			{
@@ -173,8 +177,32 @@ namespace DergiMBackend.Services
 		{
 			var user = await _db.Users.FirstOrDefaultAsync(u => u.UserName == username);
 			var result = _mapper.Map<UserDto>(user);
-			result.Roles = await _userManager.GetRolesAsync(user);
+			result.Role = (await _userManager.GetRolesAsync(user))[0];
 			return result;
+		}
+
+		public async Task<bool> AssignUserToOrganisation(ApplicationUser user)
+		{
+			try
+			{
+				var userFromDb = await _db.Users.FirstOrDefaultAsync(u => u.UserName == user.UserName);
+
+				if(userFromDb.OrganisationId != null)
+				{
+					throw new InvalidOperationException("Already assigned to organisation");
+				}
+
+				userFromDb.OrganisationId = user.OrganisationId;
+
+				_db.Update(userFromDb);
+				await _db.SaveChangesAsync();
+
+				return true;
+			}
+			catch (Exception ex)
+			{
+				return false;
+			}
 		}
 	}
 }

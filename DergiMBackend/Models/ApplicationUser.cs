@@ -7,8 +7,8 @@ namespace DergiMBackend.Models
 	{
 		public string Name { get; set; }
 		[ForeignKey(nameof(Organisation))]
-		public int OrganisationId { get; set; }
-		public Organisation Organisation { get; set; }
+		public int? OrganisationId { get; set; }
+		public Organisation? Organisation { get; set; }
 		public IEnumerable<Project> Projects { get; set; }
 	}
 }
