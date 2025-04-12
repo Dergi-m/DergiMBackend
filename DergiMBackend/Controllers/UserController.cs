@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace DergiMBackend.Controllers
 {
-	[Route("api/[controller]")]
+	[Route("api/users")]
 	[ApiController]
 	public class UserController : ControllerBase
 	{
