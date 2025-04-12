@@ -1,42 +1,37 @@
 ﻿using AutoMapper;
 using DergiMBackend.DbContext;
-using DergiMBackend.Models;
 using DergiMBackend.Models.Dtos;
+using DergiMBackend.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace DergiMBackend.Controllers
 {
-	[Route("api/projects")]
+	[Route("api/organisations")]
 	[ApiController]
-	public class ProjectController : ControllerBase
+	public class OrganisationController : ControllerBase
 	{
 		private readonly ApplicationDbContext _db;
 		private readonly IMapper _mapper;
 		private ResponceDto _responceDto;
 
-		public ProjectController(ApplicationDbContext db, IMapper mapper)
+		public OrganisationController(ApplicationDbContext db, IMapper mapper)
 		{
 			_db = db;
 			_mapper = mapper;
 			_responceDto = new ResponceDto();
 		}
 
-		[HttpGet("{organisationId:int?}")]
-		public async Task<ResponceDto> Get(int? organisationId = null)
+		[HttpGet]
+		public async Task<ResponceDto> Get()
 		{
 			try
 			{
-				List<Project> projects = await _db.Projects.ToListAsync();
-				
-				if (organisationId != null)
-				{
-					projects = projects.Where(u=> u.OrganisationId == organisationId).ToList();
-				}
+				List<Organisation> organisations = await _db.Organisation.ToListAsync();
 
 				_responceDto.Success = true;
-				_responceDto.Result = _mapper.Map<List<ProjectDto>>(projects);
+				_responceDto.Result = _mapper.Map<List<OrganisationDto>>(organisations);
 				_responceDto.StatusCode = System.Net.HttpStatusCode.OK;
 			}
 			catch (Exception ex)
@@ -47,15 +42,15 @@ namespace DergiMBackend.Controllers
 			return _responceDto;
 		}
 
-		[HttpGet("getProject/{projectId:int}")]
-		public async Task<ResponceDto> Get(int projectId)
+		[HttpGet("{id:int}")]
+		public async Task<ResponceDto> Get(int id)
 		{
 			try
 			{
-				var project  = await _db.Projects.FirstOrDefaultAsync(u => u.Id == projectId);
+				var organisation = await _db.Organisation.FirstOrDefaultAsync(u => u.Id == id);
 
 				_responceDto.Success = true;
-				_responceDto.Result = _mapper.Map<ProjectDto>(project);
+				_responceDto.Result = _mapper.Map<OrganisationDto>(organisation);
 				_responceDto.StatusCode = System.Net.HttpStatusCode.OK;
 			}
 			catch (Exception ex)
@@ -67,17 +62,17 @@ namespace DergiMBackend.Controllers
 		}
 
 		[HttpPost]
-		public async Task<ResponceDto> Create(ProjectDto projectDto)
+		public async Task<ResponceDto> Create(OrganisationDto organisationDto)
 		{
 			try
 			{
-				var project = _mapper.Map<Project>(projectDto);
+				var organisation = _mapper.Map<Organisation>(organisationDto);
 
-				await _db.Projects.AddAsync(project);
+				await _db.Organisation.AddAsync(organisation);
 				await _db.SaveChangesAsync();
 
 				_responceDto.Success = true;
-				_responceDto.Result = _mapper.Map<ProjectDto>(project);
+				_responceDto.Result = _mapper.Map<OrganisationDto>(organisation);
 				_responceDto.StatusCode = System.Net.HttpStatusCode.OK;
 			}
 			catch (Exception ex)
@@ -89,20 +84,20 @@ namespace DergiMBackend.Controllers
 		}
 
 		[HttpPut]
-		public async Task<ResponceDto> Update(ProjectDto projectDto)
+		public async Task<ResponceDto> Update(ProjectDto organisationDto)
 		{
 			try
 			{
-				var project = await _db.Projects.FirstOrDefaultAsync(u => u.Id == projectDto.Id);
+				var organisation = await _db.Organisation.FirstOrDefaultAsync(u => u.Id == organisationDto.Id);
 
-				project.Description = projectDto.Description;
-				project.Name = projectDto.Name;
+				organisation.Description = organisationDto.Description;
+				organisation.Name = organisationDto.Name;
 
-				_db.Projects.Update(project);
+				_db.Organisation.Update(organisation);
 				await _db.SaveChangesAsync();
 
 				_responceDto.Success = true;
-				_responceDto.Result = _mapper.Map<ProjectDto>(project);
+				_responceDto.Result = _mapper.Map<OrganisationDto>(organisation);
 				_responceDto.StatusCode = System.Net.HttpStatusCode.OK;
 			}
 			catch (Exception ex)
@@ -118,9 +113,9 @@ namespace DergiMBackend.Controllers
 		{
 			try
 			{
-				var project = await _db.Projects.FirstOrDefaultAsync(u => u.Id == id);
+				var organisation = await _db.Organisation.FirstOrDefaultAsync(u => u.Id == id);
 
-				_db.Projects.Remove(project);
+				_db.Organisation.Remove(organisation);
 				await _db.SaveChangesAsync();
 
 				_responceDto.Success = true;

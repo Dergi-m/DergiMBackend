@@ -124,7 +124,7 @@ namespace DergiMBackend.Controllers
 		}
 
 		[Authorize(Roles = SD.RoleADMIN)]
-		[HttpPost("assignToRole")]
+		[HttpPost("assignToOrganisation")]
 		public async Task<IActionResult> AssignUserToOrganisation([FromBody] ApplicationUser user)
 		{
 			var result = await _userService.AssignUserToOrganisation(user);

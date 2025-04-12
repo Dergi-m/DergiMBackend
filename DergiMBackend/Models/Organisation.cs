@@ -1,4 +1,6 @@
-﻿namespace DergiMBackend.Models
+﻿using System.Text.Json.Serialization;
+
+namespace DergiMBackend.Models
 {
 	public class Organisation
 	{
