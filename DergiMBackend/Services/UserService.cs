@@ -180,5 +180,29 @@ namespace DergiMBackend.Services
 			result.Role = (await _userManager.GetRolesAsync(user))[0];
 			return result;
 		}
+
+		public async Task<bool> AssignUserToOrganisation(ApplicationUser user)
+		{
+			try
+			{
+				var userFromDb = await _db.Users.FirstOrDefaultAsync(u => u.UserName == user.UserName);
+
+				if(userFromDb.OrganisationId != null)
+				{
+					throw new InvalidOperationException("Already assigned to organisation");
+				}
+
+				userFromDb.OrganisationId = user.OrganisationId;
+
+				_db.Update(userFromDb);
+				await _db.SaveChangesAsync();
+
+				return true;
+			}
+			catch (Exception ex)
+			{
+				return false;
+			}
+		}
 	}
 }

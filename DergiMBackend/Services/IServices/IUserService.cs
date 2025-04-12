@@ -1,4 +1,5 @@
-﻿using DergiMBackend.Models.Dtos;
+﻿using DergiMBackend.Models;
+using DergiMBackend.Models.Dtos;
 
 namespace DergiMBackend.Services.IServices
 {
@@ -10,5 +11,6 @@ namespace DergiMBackend.Services.IServices
 		Task<TokenDto> Login(LoginRequestDto loginRequestDto);
 		Task<UserDto> Register(RegistrationRequestDto registrationRequestDto);
 		Task<UserDto> AssignUserToRole(RegistrationRequestDto registrationRequestDto);
+		Task<bool> AssignUserToOrganisation(ApplicationUser user);
 	}
 }

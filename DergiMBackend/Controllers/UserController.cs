@@ -1,4 +1,5 @@
-﻿using DergiMBackend.Models.Dtos;
+﻿using DergiMBackend.Models;
+using DergiMBackend.Models.Dtos;
 using DergiMBackend.Services.IServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -115,6 +116,23 @@ namespace DergiMBackend.Controllers
 				_responceDto.StatusCode = System.Net.HttpStatusCode.BadRequest;
 				_responceDto.Success = false;
 				_responceDto.Message = "Error while assigning role";
+				return BadRequest(_responceDto);
+			}
+			_responceDto.StatusCode = System.Net.HttpStatusCode.OK;
+			_responceDto.Success = true;
+			return Ok(_responceDto);
+		}
+
+		[Authorize(Roles = SD.RoleADMIN)]
+		[HttpPost("assignToRole")]
+		public async Task<IActionResult> AssignUserToOrganisation([FromBody] ApplicationUser user)
+		{
+			var result = await _userService.AssignUserToOrganisation(user);
+			if (!result)
+			{
+				_responceDto.StatusCode = System.Net.HttpStatusCode.BadRequest;
+				_responceDto.Success = false;
+				_responceDto.Message = "Error while assigning user to organisation";
 				return BadRequest(_responceDto);
 			}
 			_responceDto.StatusCode = System.Net.HttpStatusCode.OK;

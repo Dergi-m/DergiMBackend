@@ -3,9 +3,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace DergiMBackend.Controllers
 {
-	[Route("api/[controller]")]
+	[Route("api/projects")]
 	[ApiController]
 	public class ProjectController : ControllerBase
 	{
+
 	}
 }
