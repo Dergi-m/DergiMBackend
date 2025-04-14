@@ -156,6 +156,15 @@ namespace DergiMBackend.Controllers
 				var filePathDirectory = Path.Combine(Directory.GetCurrentDirectory(), filePath);
 
 				var directoryPath = Path.GetDirectoryName(filePathDirectory);
+
+				var rootPath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "files"));
+				var resolvedPath = Path.GetFullPath(filePathDirectory);
+
+				if (!resolvedPath.StartsWith(rootPath))
+				{
+					throw new UnauthorizedAccessException("Invalid file path.");
+				}
+
 				if (!Directory.Exists(directoryPath))
 				{
 					Directory.CreateDirectory(directoryPath);
