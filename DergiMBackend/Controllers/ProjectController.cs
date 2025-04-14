@@ -93,6 +93,7 @@ namespace DergiMBackend.Controllers
 			return _responceDto;
 		}
 
+		[Authorize(Roles = SD.RoleADMIN)]
 		[HttpPut]
 		public async Task<ResponceDto> Update(ProjectDto projectDto)
 		{
@@ -118,6 +119,7 @@ namespace DergiMBackend.Controllers
 			return _responceDto;
 		}
 
+		[Authorize(Roles = SD.RoleADMIN)]
 		[HttpDelete("{id:int}")]
 		public async Task<ResponceDto> Delete(int id)
 		{
