@@ -10,5 +10,6 @@ namespace DergiMBackend.Models
 		[ForeignKey(nameof(Project))]
 		public int ProjectId { get; set; }
 		public Project Project { get; set; }
+		public IEnumerable<ProjectFile> ProjectFiles { get; set; }
 	}
 }
