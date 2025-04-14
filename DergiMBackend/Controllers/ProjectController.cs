@@ -31,7 +31,7 @@ namespace DergiMBackend.Controllers
 		{
 			try
 			{
-				List<Project> projects = await _db.Projects.ToListAsync();
+				List<Project> projects = await _db.Projects.Include("ProjectFiles").ToListAsync();
 				
 				if (organisationId != null)
 				{
@@ -55,7 +55,7 @@ namespace DergiMBackend.Controllers
 		{
 			try
 			{
-				var project  = await _db.Projects.FirstOrDefaultAsync(u => u.Id == projectId);
+				var project  = await _db.Projects.Include("ProjectFiles").FirstOrDefaultAsync(u => u.Id == projectId);
 
 				_responceDto.Success = true;
 				_responceDto.Result = _mapper.Map<ProjectDto>(project);
@@ -167,7 +167,7 @@ namespace DergiMBackend.Controllers
 				var baseUrl = _configuration["ApiSettings:BaseUrl"];
 				ProjectFile projectFile = new()
 				{
-					FileUrl = $"{baseUrl}/images/{projectFileDto.ProjectId}/{fileName}",
+					FileUrl = $"{baseUrl}/files/{projectFileDto.ProjectId}/{fileName}",
 					LocalFileUrl = filePath,
 					ProjectId = projectFileDto.ProjectId
 				};
@@ -193,7 +193,7 @@ namespace DergiMBackend.Controllers
 			{
 				var FileToDelete = await _db.ProjectFiles.FirstOrDefaultAsync(u => u.Id == id);
 
-				if (System.IO.File.Exists(FileToDelete.LocalFileUrl))
+				if (System.IO.File.Exists(FileToDelete?.LocalFileUrl))
 				{
 					System.IO.File.Delete(FileToDelete.LocalFileUrl);
 				}
