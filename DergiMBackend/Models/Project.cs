@@ -11,5 +11,6 @@ namespace DergiMBackend.Models
 		public int OrganisationId { get; set; }
 		public Organisation Organisation { get; set; }
 		public IEnumerable<ApplicationUser> Users { get; set; }
+		public IEnumerable<ProjectFile> ProjectFiles { get; set; }
 	}
 }

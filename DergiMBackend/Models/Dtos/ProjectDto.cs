@@ -8,6 +8,6 @@ namespace DergiMBackend.Models.Dtos
 		public string Name { get; set; }
 		public string Description { get; set; }
 		public int OrganisationId { get; set; }
-		public IEnumerable<ProjectFileDto> ProjectFiles { get; set; }
+		public IEnumerable<ProjectFileDto>? ProjectFiles { get; set; }
 	}
 }
