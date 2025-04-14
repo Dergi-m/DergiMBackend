@@ -84,7 +84,7 @@ namespace DergiMBackend.Controllers
 		}
 
 		[HttpPut]
-		public async Task<ResponceDto> Update(ProjectDto organisationDto)
+		public async Task<ResponceDto> Update(OrganisationDto organisationDto)
 		{
 			try
 			{

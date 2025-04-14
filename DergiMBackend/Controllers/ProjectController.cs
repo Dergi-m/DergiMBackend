@@ -164,7 +164,7 @@ namespace DergiMBackend.Controllers
 					projectFileDto.File.CopyTo(fileStream);
 
 				}
-				var baseUrl = _configuration.GetValue<string>("ApiSettings:BaseUrl");
+				var baseUrl = _configuration["ApiSettings:BaseUrl"];
 				ProjectFile projectFile = new()
 				{
 					FileUrl = $"{baseUrl}/images/{projectFileDto.ProjectId}/{fileName}",
