@@ -5,6 +5,7 @@ using DergiMBackend.Models.Dtos;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace DergiMBackend.Controllers
 {
@@ -14,13 +15,15 @@ namespace DergiMBackend.Controllers
 	{
 		private readonly ApplicationDbContext _db;
 		private readonly IMapper _mapper;
+		private readonly IConfiguration _configuration;
 		private ResponceDto _responceDto;
 
-		public ProjectController(ApplicationDbContext db, IMapper mapper)
+		public ProjectController(ApplicationDbContext db, IMapper mapper, IConfiguration configuration)
 		{
 			_db = db;
 			_mapper = mapper;
 			_responceDto = new ResponceDto();
+			_configuration = configuration;
 		}
 
 		[HttpGet("{organisationId:int?}")]
@@ -125,6 +128,80 @@ namespace DergiMBackend.Controllers
 
 				_responceDto.Success = true;
 				_responceDto.StatusCode = System.Net.HttpStatusCode.OK;
+			}
+			catch (Exception ex)
+			{
+				_responceDto.Success = false;
+				_responceDto.Message = ex.Message;
+			}
+			return _responceDto;
+		}
+
+		[HttpPost("addFile")]
+		public async Task<ResponceDto> AddFile([FromForm]ProjectFileDto projectFileDto)
+		{
+			try
+			{
+				var extension = Path.GetExtension(projectFileDto.File.FileName);
+				if (!SD.EXTENSIONS.Any(x => x == extension))
+				{
+					throw new Exception("Unaccepted file format");
+				}
+				string guid = Guid.NewGuid().ToString();
+				string fileName = guid + Path.GetExtension(projectFileDto.File.FileName);
+				string filePath = @"wwwroot\files\" + projectFileDto.ProjectId + @"\" + fileName;
+
+				var filePathDirectory = Path.Combine(Directory.GetCurrentDirectory(), filePath);
+
+				var directoryPath = Path.GetDirectoryName(filePathDirectory);
+				if (!Directory.Exists(directoryPath))
+				{
+					Directory.CreateDirectory(directoryPath);
+				}
+
+				using (var fileStream = new FileStream(filePathDirectory, FileMode.Create))
+				{
+					projectFileDto.File.CopyTo(fileStream);
+
+				}
+				var baseUrl = _configuration.GetValue<string>("ApiSettings:BaseUrl");
+				ProjectFile projectFile = new()
+				{
+					FileUrl = $"{baseUrl}/images/{projectFileDto.ProjectId}/{fileName}",
+					LocalFileUrl = filePath,
+					ProjectId = projectFileDto.ProjectId
+				};
+
+				await _db.ProjectFiles.AddAsync(projectFile);
+				await _db.SaveChangesAsync();
+
+				_responceDto.Success = true;
+				_responceDto.StatusCode = System.Net.HttpStatusCode.OK;
+			}
+			catch (Exception ex)
+			{
+				_responceDto.Success = false;
+				_responceDto.Message = ex.Message;
+			}
+			return _responceDto;
+		}
+
+		[HttpDelete("deleteFile/{id:int}")]
+		public async Task<ResponceDto> DeleteFile(int id)
+		{
+			try
+			{
+				var FileToDelete = await _db.ProjectFiles.FirstOrDefaultAsync(u => u.Id == id);
+
+				if (System.IO.File.Exists(FileToDelete.LocalFileUrl))
+				{
+					System.IO.File.Delete(FileToDelete.LocalFileUrl);
+				}
+
+				_db.ProjectFiles.Remove(FileToDelete);
+				await _db.SaveChangesAsync();
+
+				_responceDto.Success = true;
 			}
 			catch (Exception ex)
 			{

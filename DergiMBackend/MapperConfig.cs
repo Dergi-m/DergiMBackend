@@ -12,6 +12,7 @@ namespace DergiMBackend
 			{
 				config.CreateMap<Project, ProjectDto>().ReverseMap();
 				config.CreateMap<Organisation, OrganisationDto>().ReverseMap();
+				config.CreateMap<ProjectFile, ProjectFileDto>().ReverseMap();
 			});
 			return mapping;
 		}
