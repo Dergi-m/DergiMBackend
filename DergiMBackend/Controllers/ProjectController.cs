@@ -2,6 +2,7 @@
 using DergiMBackend.DbContext;
 using DergiMBackend.Models;
 using DergiMBackend.Models.Dtos;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +11,7 @@ using Microsoft.Extensions.Configuration;
 namespace DergiMBackend.Controllers
 {
 	[Route("api/projects")]
+	[Authorize]
 	[ApiController]
 	public class ProjectController : ControllerBase
 	{

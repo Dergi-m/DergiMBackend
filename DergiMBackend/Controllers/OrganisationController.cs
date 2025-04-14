@@ -5,10 +5,12 @@ using DergiMBackend.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 namespace DergiMBackend.Controllers
 {
 	[Route("api/organisations")]
+	[Authorize]
 	[ApiController]
 	public class OrganisationController : ControllerBase
 	{
@@ -83,6 +85,7 @@ namespace DergiMBackend.Controllers
 			return _responceDto;
 		}
 
+		[Authorize(Roles = SD.RoleADMIN)]
 		[HttpPut]
 		public async Task<ResponceDto> Update(OrganisationDto organisationDto)
 		{
@@ -108,6 +111,7 @@ namespace DergiMBackend.Controllers
 			return _responceDto;
 		}
 
+		[Authorize(Roles = SD.RoleADMIN)]
 		[HttpDelete("{id:int}")]
 		public async Task<ResponceDto> Delete(int id)
 		{
