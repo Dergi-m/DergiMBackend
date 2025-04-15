@@ -43,7 +43,7 @@ namespace DergiMBackend.Services
 			return false;
 		}
 
-		public async Task<TokenDto> Login(LoginRequestDto loginRequestDto)
+		public async Task<SessionTokenDto> Login(LoginRequestDto loginRequestDto)
 		{
 			var user = _db.Users.FirstOrDefault(u => u.UserName.ToLower() == loginRequestDto.UserName.ToLower());
 
@@ -51,25 +51,25 @@ namespace DergiMBackend.Services
 
 			if (user == null || !isValid)
 			{
-				return new TokenDto
+				return new SessionTokenDto
 				{
-					AccessToken = "",
+					SessionToken = "",
 				};
 			}
 
 			var tokenid = $"JWI{Guid.NewGuid()}";
-			var accessToken = await GetAcessTokenAsync(user, tokenid);
+			var accessToken = await GetSessionTokenAsync(user, tokenid);
 
 
-			TokenDto tokendtoDto = new TokenDto()
+			SessionTokenDto tokendtoDto = new SessionTokenDto()
 			{
-				AccessToken = accessToken,
+				SessionToken = accessToken,
 				User = _mapper.Map<UserDto>(user),
 			};
 			return tokendtoDto;
 		}
 
-		private async Task<string> GetAcessTokenAsync(ApplicationUser applicationUser, string tokenid)
+		private async Task<string> GetSessionTokenAsync(ApplicationUser applicationUser, string tokenid)
 		{
 			var roles = await _userManager.GetRolesAsync(applicationUser);
 			var tokenhandler = new JwtSecurityTokenHandler();
