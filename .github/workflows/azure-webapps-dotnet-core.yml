@@ -1,0 +1,39 @@
+name: Deploy DergiM Backend to Azure
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  AZURE_WEBAPP_NAME: dergim-backend
+  DOTNET_VERSION: '8'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v3
+
+      - name: Setup .NET SDK ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore ./DergiMBackend/DergiMBackend.csproj
+
+      - name: Build project
+        run: dotnet build ./DergiMBackend/DergiMBackend.csproj --configuration Release --no-restore
+
+      - name: Publish project
+        run: dotnet publish ./DergiMBackend/DergiMBackend.csproj --configuration Release --output ./publish --no-build
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ./publish
