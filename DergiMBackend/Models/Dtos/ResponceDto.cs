@@ -2,7 +2,7 @@
 
 namespace DergiMBackend.Models.Dtos
 {
-	public class ResponseDto
+	public class ResponceDto
 	{
 		public object? Result { get; set; }
 		public bool Success { get; set; }
