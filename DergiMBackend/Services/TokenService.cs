@@ -18,10 +18,13 @@ public class TokenService : ITokenService
 
 	public string GenerateToken(string clientId)
 	{
-		var client = _configuration.GetSection("Clients").Get<List<ClientConfig>>()
-			.FirstOrDefault(c => c.ClientId == clientId);
+		ClientConfig client = new()
+		{
+			ClientId = clientId,
+			ClientSecret = _configuration["CLIENT_SECRET"]
+		};
 
-		if (client == null)
+		if (string.IsNullOrEmpty(client.ClientSecret))
 			throw new Exception("Invalid clientId");
 
 		var clientSecret = client.ClientSecret;
