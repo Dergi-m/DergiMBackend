@@ -16,18 +16,8 @@ public class TokenService : ITokenService
 		_configuration = configuration;
 	}
 
-	public string GenerateToken(string clientId)
+	public string GenerateToken(string clientId, string clientSecret)
 	{
-		ClientConfig client = new()
-		{
-			ClientId = clientId,
-			ClientSecret = _configuration["CLIENT_SECRET"]
-		};
-
-		var clientSecret = client.ClientSecret;
-		if (string.IsNullOrEmpty(clientSecret))
-			throw new Exception("ClientSecret is missing for the given clientId");
-
 		var key = Encoding.ASCII.GetBytes(clientSecret);
 		var tokenHandler = new JwtSecurityTokenHandler();
 
