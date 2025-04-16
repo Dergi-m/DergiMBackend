@@ -1,8 +1,8 @@
 ﻿namespace DergiMBackend.Models.Dtos
 {
-	public class TokenDto
+	public class AccessTokenDto
 	{
 		public string AccessToken { get; set; }
-		public UserDto User { get; set; }
+		public DateTime Expiration { get; set; }
 	}
 }

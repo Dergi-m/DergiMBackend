@@ -8,16 +8,45 @@ using Microsoft.AspNetCore.Mvc;
 namespace DergiMBackend.Controllers
 {
 	[Route("api/users")]
+	[Authorize]
 	[ApiController]
 	public class UserController : ControllerBase
 	{
 		private readonly IUserService _userService;
+		private readonly ITokenService _tokenService;
 		protected ResponceDto _responceDto;
 
-		public UserController(IUserService userRepository)
+		public UserController(IUserService userRepository, ITokenService tokenService)
 		{
 			_userService = userRepository;
 			_responceDto = new();
+			_tokenService = tokenService;
+		}
+
+		private void ValidateRegisteredUser()
+		{
+			var sessionToken = Request.Headers["SessionToken"].ToString();
+			if (string.IsNullOrEmpty(sessionToken))
+			{
+				throw new UnauthorizedAccessException("SessionToken is required.");
+			}
+
+			_tokenService.ValidateSessionToken(sessionToken);
+		}
+
+		private void ValidateAdminRole()
+		{
+			var sessionToken = Request.Headers["SessionToken"].ToString();
+			if (string.IsNullOrEmpty(sessionToken))
+			{
+				throw new UnauthorizedAccessException("SessionToken is required.");
+			}
+
+			var role = _tokenService.ValidateSessionToken(sessionToken);
+			if (role != SD.RoleADMIN)
+			{
+				throw new UnauthorizedAccessException("You do not have the required ADMIN role.");
+			}
 		}
 
 		[HttpGet("{organisationId:int?}")]
@@ -25,6 +54,7 @@ namespace DergiMBackend.Controllers
 		{
 			try
 			{
+				ValidateRegisteredUser();
 				var users = await _userService.GetUsersAsync(organisationId);
 
 				if (users == null)
@@ -48,6 +78,7 @@ namespace DergiMBackend.Controllers
 		{
 			try
 			{
+				ValidateRegisteredUser();
 				var user = await _userService.GetUserAsync(username);
 				if (user == null)
 				{
@@ -69,7 +100,7 @@ namespace DergiMBackend.Controllers
 		public async Task<IActionResult> Login([FromBody] LoginRequestDto model)
 		{
 			var tokendto = await _userService.Login(model);
-			if (tokendto == null || string.IsNullOrEmpty(tokendto.AccessToken))
+			if (tokendto == null || string.IsNullOrEmpty(tokendto.SessionToken))
 			{
 				_responceDto.StatusCode = System.Net.HttpStatusCode.BadRequest;
 				_responceDto.Success = false;
@@ -110,6 +141,7 @@ namespace DergiMBackend.Controllers
 		[HttpPost("assignToRole")]
 		public async Task<IActionResult> AssignUserToRole([FromBody] RegistrationRequestDto model)
 		{
+			ValidateAdminRole();
 			var user = await _userService.AssignUserToRole(model);
 			if (user == null)
 			{
@@ -127,6 +159,7 @@ namespace DergiMBackend.Controllers
 		[HttpPost("assignToOrganisation")]
 		public async Task<IActionResult> AssignUserToOrganisation([FromBody] ApplicationUser user)
 		{
+			ValidateAdminRole();
 			var result = await _userService.AssignUserToOrganisation(user);
 			if (!result)
 			{
