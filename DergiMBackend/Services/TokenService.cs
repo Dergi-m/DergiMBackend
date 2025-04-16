@@ -16,18 +16,8 @@ public class TokenService : ITokenService
 		_configuration = configuration;
 	}
 
-	public string GenerateToken(string clientId)
+	public string GenerateToken(string clientId, string clientSecret)
 	{
-		var client = _configuration.GetSection("Clients").Get<List<ClientConfig>>()
-			.FirstOrDefault(c => c.ClientId == clientId);
-
-		if (client == null)
-			throw new Exception("Invalid clientId");
-
-		var clientSecret = client.ClientSecret;
-		if (string.IsNullOrEmpty(clientSecret))
-			throw new Exception("ClientSecret is missing for the given clientId");
-
 		var key = Encoding.ASCII.GetBytes(clientSecret);
 		var tokenHandler = new JwtSecurityTokenHandler();
 
@@ -50,11 +40,11 @@ public class TokenService : ITokenService
 
 	public ClaimsPrincipal ValidateAccessToken(string token, string clientId)
 	{
-		var client = _configuration.GetSection("Clients").Get<List<ClientConfig>>()
-			.FirstOrDefault(c => c.ClientId == clientId);
-
-		if (client == null)
-			throw new Exception("Invalid clientId");
+		ClientConfig client = new()
+		{
+			ClientId = clientId,
+			ClientSecret = _configuration["CLIENT_SECRET"]
+		};
 
 		var clientSecret = client.ClientSecret;
 		if (string.IsNullOrEmpty(clientSecret))

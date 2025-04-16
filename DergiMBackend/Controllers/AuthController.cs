@@ -18,11 +18,11 @@ namespace DergiMBackend.Controllers
 		}
 
 		[HttpGet]
-		public IActionResult GenerateToken([FromHeader] string clientId)
+		public IActionResult GenerateToken([FromHeader] string clientId, string clientsecret)
 		{
 			try
 			{
-				var token = _tokenService.GenerateToken(clientId);
+				var token = _tokenService.GenerateToken(clientId, clientsecret);
 				return Ok(new { AccessToken = token });
 			}
 			catch (Exception ex)
