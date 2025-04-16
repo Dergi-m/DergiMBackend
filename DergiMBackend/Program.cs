@@ -85,9 +85,13 @@ builder.Services.AddAuthentication(options =>
 						Console.WriteLine("clientId is missing in the token.");
 					}
 
-					var clients = configuration.GetSection("Clients").Get<List<ClientConfig>>();
-					var client = clients?.FirstOrDefault(c => c.ClientId == clientId);
-					if (client == null)
+					ClientConfig client = new()
+					{
+						ClientId = clientId,
+						ClientSecret = configuration["CLIENT_SECRET"]
+					};
+
+					if (string.IsNullOrEmpty(client.ClientSecret))
 					{
 						context.Fail("Invalid clientId.");
 						Console.WriteLine("Invalid clientId.");
