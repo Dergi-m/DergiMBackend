@@ -64,7 +64,14 @@ namespace DergiMBackend.Services
 			SessionTokenDto tokendtoDto = new SessionTokenDto()
 			{
 				SessionToken = accessToken,
-				User = _mapper.Map<UserDto>(user),
+				User = new()
+				{
+					Id = user.Id,
+					Name = user.Name,
+					UserName = user.UserName,
+					Role = (await _userManager.GetRolesAsync(user))[0],
+					OrganisationId = user.OrganisationId
+				},
 			};
 			return tokendtoDto;
 		}

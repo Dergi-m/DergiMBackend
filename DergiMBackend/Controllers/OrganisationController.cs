@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
+using DergiMBackend.Services.IServices;
 
 namespace DergiMBackend.Controllers
 {
@@ -17,12 +18,40 @@ namespace DergiMBackend.Controllers
 		private readonly ApplicationDbContext _db;
 		private readonly IMapper _mapper;
 		private ResponceDto _responceDto;
+		public ITokenService _tokenService;
 
-		public OrganisationController(ApplicationDbContext db, IMapper mapper)
+		public OrganisationController(ApplicationDbContext db, IMapper mapper, ITokenService tokenService)
 		{
 			_db = db;
 			_mapper = mapper;
 			_responceDto = new ResponceDto();
+			_tokenService = tokenService;
+		}
+
+		private void ValidateRegisteredUser()
+		{
+			var sessionToken = Request.Headers["SessionToken"].ToString();
+			if (string.IsNullOrEmpty(sessionToken))
+			{
+				throw new UnauthorizedAccessException("SessionToken is required.");
+			}
+
+			_tokenService.ValidateSessionToken(sessionToken);
+		}
+
+		private void ValidateAdminRole()
+		{
+			var sessionToken = Request.Headers["SessionToken"].ToString();
+			if (string.IsNullOrEmpty(sessionToken))
+			{
+				throw new UnauthorizedAccessException("SessionToken is required.");
+			}
+
+			var role = _tokenService.ValidateSessionToken(sessionToken);
+			if (role != SD.RoleADMIN)
+			{
+				throw new UnauthorizedAccessException("You do not have the required ADMIN role.");
+			}
 		}
 
 		[HttpGet]
@@ -30,6 +59,7 @@ namespace DergiMBackend.Controllers
 		{
 			try
 			{
+				ValidateRegisteredUser();
 				List<Organisation> organisations = await _db.Organisation.ToListAsync();
 
 				_responceDto.Success = true;
@@ -49,6 +79,7 @@ namespace DergiMBackend.Controllers
 		{
 			try
 			{
+				ValidateRegisteredUser();
 				var organisation = await _db.Organisation.FirstOrDefaultAsync(u => u.Id == id);
 
 				_responceDto.Success = true;
@@ -68,6 +99,7 @@ namespace DergiMBackend.Controllers
 		{
 			try
 			{
+				ValidateAdminRole();
 				var organisation = _mapper.Map<Organisation>(organisationDto);
 
 				await _db.Organisation.AddAsync(organisation);
@@ -85,12 +117,12 @@ namespace DergiMBackend.Controllers
 			return _responceDto;
 		}
 
-		[Authorize(Roles = SD.RoleADMIN)]
 		[HttpPut]
 		public async Task<ResponceDto> Update(OrganisationDto organisationDto)
 		{
 			try
 			{
+				ValidateAdminRole();
 				var organisation = await _db.Organisation.FirstOrDefaultAsync(u => u.Id == organisationDto.Id);
 
 				organisation.Description = organisationDto.Description;
@@ -117,6 +149,7 @@ namespace DergiMBackend.Controllers
 		{
 			try
 			{
+				ValidateAdminRole();
 				var organisation = await _db.Organisation.FirstOrDefaultAsync(u => u.Id == id);
 
 				_db.Organisation.Remove(organisation);

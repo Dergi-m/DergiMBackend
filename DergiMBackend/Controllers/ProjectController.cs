@@ -2,6 +2,7 @@
 using DergiMBackend.DbContext;
 using DergiMBackend.Models;
 using DergiMBackend.Models.Dtos;
+using DergiMBackend.Services.IServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -18,14 +19,42 @@ namespace DergiMBackend.Controllers
 		private readonly ApplicationDbContext _db;
 		private readonly IMapper _mapper;
 		private readonly IConfiguration _configuration;
+		private readonly ITokenService _tokenService;
 		private ResponceDto _responceDto;
 
-		public ProjectController(ApplicationDbContext db, IMapper mapper, IConfiguration configuration)
+		public ProjectController(ApplicationDbContext db, IMapper mapper, IConfiguration configuration, ITokenService tokenService)
 		{
 			_db = db;
 			_mapper = mapper;
 			_responceDto = new ResponceDto();
 			_configuration = configuration;
+			_tokenService = tokenService;
+		}
+
+		private void ValidateRegisteredUser()
+		{
+			var sessionToken = Request.Headers["SessionToken"].ToString();
+			if (string.IsNullOrEmpty(sessionToken))
+			{
+				throw new UnauthorizedAccessException("SessionToken is required.");
+			}
+
+			_tokenService.ValidateSessionToken(sessionToken);
+		}
+
+		private void ValidateAdminRole()
+		{
+			var sessionToken = Request.Headers["SessionToken"].ToString();
+			if (string.IsNullOrEmpty(sessionToken))
+			{
+				throw new UnauthorizedAccessException("SessionToken is required.");
+			}
+
+			var role = _tokenService.ValidateSessionToken(sessionToken);
+			if (role != SD.RoleADMIN)
+			{
+				throw new UnauthorizedAccessException("You do not have the required ADMIN role.");
+			}
 		}
 
 		[HttpGet("{organisationId:int?}")]
@@ -33,6 +62,7 @@ namespace DergiMBackend.Controllers
 		{
 			try
 			{
+				ValidateRegisteredUser();
 				List<Project> projects = await _db.Projects.Include("ProjectFiles").ToListAsync();
 				
 				if (organisationId != null)
@@ -57,6 +87,7 @@ namespace DergiMBackend.Controllers
 		{
 			try
 			{
+				ValidateRegisteredUser();
 				var project  = await _db.Projects.Include("ProjectFiles").FirstOrDefaultAsync(u => u.Id == projectId);
 
 				_responceDto.Success = true;
@@ -76,6 +107,7 @@ namespace DergiMBackend.Controllers
 		{
 			try
 			{
+				ValidateRegisteredUser();
 				var project = _mapper.Map<Project>(projectDto);
 
 				await _db.Projects.AddAsync(project);
@@ -93,12 +125,12 @@ namespace DergiMBackend.Controllers
 			return _responceDto;
 		}
 
-		[Authorize(Roles = SD.RoleADMIN)]
 		[HttpPut]
 		public async Task<ResponceDto> Update(ProjectDto projectDto)
 		{
 			try
 			{
+				ValidateAdminRole();
 				var project = await _db.Projects.FirstOrDefaultAsync(u => u.Id == projectDto.Id);
 
 				project.Description = projectDto.Description;
@@ -125,6 +157,7 @@ namespace DergiMBackend.Controllers
 		{
 			try
 			{
+				ValidateAdminRole();
 				var project = await _db.Projects.FirstOrDefaultAsync(u => u.Id == id);
 
 				_db.Projects.Remove(project);
@@ -146,6 +179,7 @@ namespace DergiMBackend.Controllers
 		{
 			try
 			{
+				ValidateRegisteredUser();
 				var extension = Path.GetExtension(projectFileDto.File.FileName);
 				if (!SD.EXTENSIONS.Any(x => x == extension))
 				{
@@ -204,6 +238,7 @@ namespace DergiMBackend.Controllers
 		{
 			try
 			{
+				ValidateAdminRole();
 				var FileToDelete = await _db.ProjectFiles.FirstOrDefaultAsync(u => u.Id == id);
 
 				if (System.IO.File.Exists(FileToDelete?.LocalFileUrl))

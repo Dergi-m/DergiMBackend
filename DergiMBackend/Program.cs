@@ -11,6 +11,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 using System.IdentityModel.Tokens.Jwt;
+using Microsoft.Extensions.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -66,61 +67,57 @@ builder.Services.AddAuthentication(options =>
 	{
 		OnMessageReceived = context =>
 		{
-			var token = context.Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
-			if (!string.IsNullOrEmpty(token))
-			{
-				// Store the token in HttpContext.Items for later use
-				context.HttpContext.Items["AccessToken"] = token;
-			}
-			return Task.CompletedTask;
-		},
-		OnTokenValidated = async context =>
-		{
-			var tokenHandler = new JwtSecurityTokenHandler();
-			var configuration = context.HttpContext.RequestServices.GetRequiredService<IConfiguration>();
-
-			var clientId = context.Principal?.FindFirst("clientId")?.Value;
-			if (string.IsNullOrEmpty(clientId))
-			{
-				context.Fail("Invalid clientId in token.");
-				return;
-			}
-
-			var tokenString = context.HttpContext.Items["AccessToken"] as string;
-
-			var clientSecret = configuration[$"Clients:{clientId}:ClientSecret"];
-			if (string.IsNullOrEmpty(clientSecret))
-			{
-				context.Fail("Invalid clientId or clientSecret.");
-				return;
-			}
-
-			var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(clientSecret));
-			var validationParameters = new TokenValidationParameters
-			{
-				ValidateIssuer = true,
-				ValidateAudience = true,
-				ValidateLifetime = true,
-				ValidateIssuerSigningKey = true,
-				ValidIssuer = configuration["ApiSettings:Issuer"],
-				ValidAudience = configuration["ApiSettings:Audience"],
-				IssuerSigningKey = key
-			};
-
 			try
 			{
-				if (string.IsNullOrEmpty(tokenString))
+				var token = context.Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
+				if (!string.IsNullOrEmpty(token))
 				{
-					context.Fail("Invalid token format.");
-					return;
-				}
+					var tokenHandler = new JwtSecurityTokenHandler();
+					var configuration = context.HttpContext.RequestServices.GetRequiredService<IConfiguration>();
 
-				tokenHandler.ValidateToken(tokenString, validationParameters, out _);
+					var jwtToken = tokenHandler.ReadJwtToken(token);
+
+					var clientId = jwtToken.Claims.FirstOrDefault(c => c.Type == "clientId").Value;
+
+					if (string.IsNullOrEmpty(clientId))
+					{
+						context.Fail("clientId is missing in the token.");
+						Console.WriteLine("clientId is missing in the token.");
+					}
+
+					var clients = configuration.GetSection("Clients").Get<List<ClientConfig>>();
+					var client = clients?.FirstOrDefault(c => c.ClientId == clientId);
+					if (client == null)
+					{
+						context.Fail("Invalid clientId.");
+						Console.WriteLine("Invalid clientId.");
+					}
+
+					options.TokenValidationParameters = new TokenValidationParameters
+					{
+						ValidateIssuer = true,
+						ValidateAudience = true,
+						ValidateLifetime = true,
+						ValidateIssuerSigningKey = true,
+						ValidIssuer = configuration["ApiSettings:Issuer"],
+						ValidAudience = configuration["ApiSettings:Audience"],
+						IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(client.ClientSecret))
+					};
+				}
+				else
+					context.Fail($"Token validation failed: empty token or wrong token format");
+				return Task.CompletedTask;
 			}
-			catch (Exception ex)
+			catch(Exception ex)
 			{
 				context.Fail($"Token validation failed: {ex.Message}");
+				return Task.CompletedTask;
 			}
+		},
+		OnAuthenticationFailed = context =>
+		{
+			Console.WriteLine($"Authentication failed: {context.Exception.Message}");
+			return Task.CompletedTask;
 		}
 	};
 });
