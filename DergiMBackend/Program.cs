@@ -10,6 +10,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using System.IdentityModel.Tokens.Jwt;
+using Microsoft.Extensions.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +24,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>().AddEntityFrameworkStores<ApplicationDbContext>();
 builder.Services.AddControllers();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddEndpointsApiExplorer();
 
 var secret = builder.Configuration.GetValue<string>("ApiSettings:Secret");
@@ -40,36 +43,85 @@ builder.Services.AddSwaggerGen(options =>
 		Scheme = "Bearer"
 	});
 	options.AddSecurityRequirement(new OpenApiSecurityRequirement()
-	{
-		{
-			new OpenApiSecurityScheme()
-			{
-				Reference = new OpenApiReference()
-				{
-					Type = ReferenceType.SecurityScheme,
-					Id = JwtBearerDefaults.AuthenticationScheme
-				}
-			}, new string[] {}
-		}
-	});
+	   {
+		   {
+			   new OpenApiSecurityScheme()
+			   {
+				   Reference = new OpenApiReference()
+				   {
+					   Type = ReferenceType.SecurityScheme,
+					   Id = JwtBearerDefaults.AuthenticationScheme
+				   }
+			   }, new string[] {}
+		   }
+	   });
 });
 
 builder.Services.AddAuthentication(options =>
 {
 	options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
 	options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-}).AddJwtBearer(x =>
+}).AddJwtBearer(options =>
 {
-	x.TokenValidationParameters = new()
+	options.Events = new JwtBearerEvents
 	{
-		ValidateIssuerSigningKey = true,
-		IssuerSigningKey = new SymmetricSecurityKey(key),
-		ValidateIssuer = true,
-		ValidIssuer = issuer,
-		ValidateAudience = true,
-		ValidAudience = audience
+		OnMessageReceived = context =>
+		{
+			try
+			{
+				var token = context.Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
+				if (!string.IsNullOrEmpty(token))
+				{
+					var tokenHandler = new JwtSecurityTokenHandler();
+					var configuration = context.HttpContext.RequestServices.GetRequiredService<IConfiguration>();
+
+					var jwtToken = tokenHandler.ReadJwtToken(token);
+
+					var clientId = jwtToken.Claims.FirstOrDefault(c => c.Type == "clientId").Value;
+
+					if (string.IsNullOrEmpty(clientId))
+					{
+						context.Fail("clientId is missing in the token.");
+						Console.WriteLine("clientId is missing in the token.");
+					}
+
+					var clients = configuration.GetSection("Clients").Get<List<ClientConfig>>();
+					var client = clients?.FirstOrDefault(c => c.ClientId == clientId);
+					if (client == null)
+					{
+						context.Fail("Invalid clientId.");
+						Console.WriteLine("Invalid clientId.");
+					}
+
+					options.TokenValidationParameters = new TokenValidationParameters
+					{
+						ValidateIssuer = true,
+						ValidateAudience = true,
+						ValidateLifetime = true,
+						ValidateIssuerSigningKey = true,
+						ValidIssuer = configuration["ApiSettings:Issuer"],
+						ValidAudience = configuration["ApiSettings:Audience"],
+						IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(client.ClientSecret))
+					};
+				}
+				else
+					context.Fail($"Token validation failed: empty token or wrong token format");
+				return Task.CompletedTask;
+			}
+			catch(Exception ex)
+			{
+				context.Fail($"Token validation failed: {ex.Message}");
+				return Task.CompletedTask;
+			}
+		},
+		OnAuthenticationFailed = context =>
+		{
+			Console.WriteLine($"Authentication failed: {context.Exception.Message}");
+			return Task.CompletedTask;
+		}
 	};
 });
+
 builder.Services.AddAuthorization();
 
 IMapper mapper = MapperConfig.RegisterMaps().CreateMapper();
@@ -90,5 +142,18 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-
+ApplyMigrations();
 app.Run();
+
+void ApplyMigrations()
+{
+	using (var scope = app.Services.CreateScope())
+	{
+		var _db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+		if (_db != null && _db.Database.GetPendingMigrations().Count() > 0)
+		{
+			_db.Database.Migrate();
+		}
+	}
+}

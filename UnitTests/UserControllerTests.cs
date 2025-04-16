@@ -61,7 +61,7 @@ namespace DergiMBackend.Tests.Controllers
 		{
 			// Arrange
 			var loginRequest = new LoginRequestDto { UserName = "TestUser", Password = "Password123" };
-			var tokenDto = new TokenDto { AccessToken = "ValidToken" };
+			var tokenDto = new SessionTokenDto { SessionToken = "ValidToken" };
 			_userServiceMock.Setup(s => s.Login(loginRequest)).ReturnsAsync(tokenDto);
 
 			// Act
