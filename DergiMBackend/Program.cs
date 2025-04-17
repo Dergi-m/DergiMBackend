@@ -12,14 +12,27 @@ using Microsoft.OpenApi.Models;
 using System.Text;
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Data.SqlClient;
+using Azure.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-	options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultSQLConnection"));
+    var connection = new SqlConnection("Server=tcp:dergim-db.database.windows.net,1433;Database=dergim-db;Encrypt=True;TrustServerCertificate=False;");
+
+    // Use Azure Managed Identity to get token
+    var credential = new DefaultAzureCredential();
+    var token = credential.GetToken(
+        new Azure.Core.TokenRequestContext(new[] { "https://database.windows.net/.default" })
+    );
+
+    connection.AccessToken = token.Token;
+
+    options.UseSqlServer(connection);
 });
+
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>().AddEntityFrameworkStores<ApplicationDbContext>();
 builder.Services.AddControllers();
