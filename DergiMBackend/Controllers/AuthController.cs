@@ -1,34 +1,34 @@
 ﻿using DergiMBackend.Models.Dtos;
 using DergiMBackend.Services.IServices;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
-namespace DergiMBackend.Controllers
+namespace DergiMBackend.Controllers;
+
+/// <summary>
+/// Controller for handling authentication-related operations.
+/// </summary>
+[ApiController]
+[Route("api/[controller]")]
+public class AuthController(IAuthService authService) : ControllerBase
 {
-	[Route("auth")]
-	[ApiController]
-	public class AuthController : ControllerBase
-	{
-		private readonly ITokenService _tokenService;
-		private ResponceDto _responceDto;
+    private readonly IAuthService authService = authService;
 
-		public AuthController(ITokenService tokenService)
-		{
-			_tokenService = tokenService;
-		}
-
-		[HttpGet]
-		public IActionResult GenerateToken([FromHeader] string clientId, string clientsecret)
-		{
-			try
-			{
-				var token = _tokenService.GenerateToken(clientId, clientsecret);
-				return Ok(new { AccessToken = token });
-			}
-			catch (Exception ex)
-			{
-				return BadRequest(new { Message = ex.Message });
-			}
-		}
-	}
+    /// <summary>
+    /// Retrieves an access token using the provided credentials.
+    /// </summary>
+    /// <param name="request">The token request containing credentials such as client_id, client_secret, and other required fields.</param>
+    /// <returns>
+    /// A task that represents the asynchronous operation. The task result contains:
+    /// - <see cref="OkObjectResult"/> if the token is successfully retrieved, containing the token response.
+    /// - <see cref="BadRequestObjectResult"/> if the request parameters are invalid or token retrieval fails.
+    /// </returns>
+    /// <remarks>
+    /// This endpoint expects the request body to be in <c>application/x-www-form-urlencoded</c> format.
+    /// </remarks>
+    [HttpPost("Token")]
+    public async Task<IActionResult> GetAccessToken([FromForm] TokenRequestDto request)
+    {
+        TokenResponseDto? response = await authService.GetAccessTokenAsync(request);
+        return response is null ? Unauthorized("Invalid Credentials") : Ok(response);
+    }
 }
