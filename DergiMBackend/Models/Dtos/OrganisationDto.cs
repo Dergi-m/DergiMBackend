@@ -2,6 +2,7 @@
 {
 	public class OrganisationDto
 	{
+		public int id { get; set; }
 		public required string UniqueName { get; set; }
 		public string? Description { get; set; }
 		public List<UserRole> UserRoles { get; set; } = new List<UserRole>();

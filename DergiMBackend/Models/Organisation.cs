@@ -1,7 +1,10 @@
-﻿namespace DergiMBackend.Models
+﻿using Microsoft.EntityFrameworkCore;
+
+namespace DergiMBackend.Models
 {
 	public class Organisation
 	{
+		public int id { get; set; }
 		public required string UniqueName { get; set; }
 		public required string Name { get; set; }
 		public string? Description { get; set; }
