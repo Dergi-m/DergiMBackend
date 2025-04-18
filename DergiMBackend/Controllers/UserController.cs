@@ -13,10 +13,10 @@ namespace DergiMBackend.Controllers
 	public class UserController : ControllerBase
 	{
 		private readonly IUserService _userService;
-		private readonly ITokenService _tokenService;
-		protected ResponceDto _responceDto;
+		private readonly ISessionService _tokenService;
+		protected ResponseDto _responceDto;
 
-		public UserController(IUserService userRepository, ITokenService tokenService)
+		public UserController(IUserService userRepository, ISessionService tokenService)
 		{
 			_userService = userRepository;
 			_responceDto = new();
@@ -50,7 +50,7 @@ namespace DergiMBackend.Controllers
 		}
 
 		[HttpGet("{organisationId:int?}")]
-		public async Task<ResponceDto> Get(int? organisationId = null)
+		public async Task<ResponseDto> Get(int? organisationId = null)
 		{
 			try
 			{
@@ -74,7 +74,7 @@ namespace DergiMBackend.Controllers
 		}
 
 		[HttpGet("{username}")]
-		public async Task<ResponceDto> Get(string username)
+		public async Task<ResponseDto> Get(string username)
 		{
 			try
 			{

@@ -27,9 +27,9 @@ namespace DergiMBackend.Services
 			_db = db;
 			_userManager = userManager;
 			_roleManager = roleManager;
-			secretKey = configuration.GetValue<string>("ApiSettings:Secret");
-			issuer = configuration.GetValue<string>("ApiSettings:Issuer");
-			audience = configuration.GetValue<string>("ApiSettings:Audience");
+			secretKey = configuration.GetValue<string>("ApiSettings:Secret") ?? throw new InvalidOperationException("Secret is not configured."); ;
+			issuer = configuration.GetValue<string>("ApiSettings:Issuer") ?? throw new InvalidOperationException("Issuer is not configured."); ;
+			audience = configuration.GetValue<string>("ApiSettings:Audience") ?? throw new InvalidOperationException("Audience is not configured."); ;
 			_mapper = mapper;
 		}
 
@@ -43,34 +43,35 @@ namespace DergiMBackend.Services
 			return false;
 		}
 
-		public async Task<SessionTokenDto> Login(LoginRequestDto loginRequestDto)
+		public async Task<SessionDto> Login(LoginRequestDto loginRequestDto)
 		{
-			var user = _db.Users.FirstOrDefault(u => u.UserName.ToLower() == loginRequestDto.UserName.ToLower());
+			var user = await _db.Users.FirstOrDefaultAsync(user => user.UserName!.ToLower() == loginRequestDto.UserName.ToLower());
+			var organisation = await _db.Organisation.FirstOrDefaultAsync(org => org.UniqueName == loginRequestDto.OrganisationUniqueName);
 
-			bool isValid = await _userManager.CheckPasswordAsync(user, loginRequestDto.Password);
+            if (user == null)
+                throw new InvalidOperationException("User not found");
 
-			if (user == null || !isValid)
-			{
-				return new SessionTokenDto
-				{
-					SessionToken = "",
-				};
-			}
+            if (organisation == null)
+                throw new InvalidOperationException("Organisation not found");
+
+            if (user.OrganisationUniqueName != organisation.UniqueName) 
+				throw new InvalidOperationException("User not found in this organisation");
+
+            bool isValid = await _userManager.CheckPasswordAsync(user, loginRequestDto.Password);
 
 			var tokenid = $"JWI{Guid.NewGuid()}";
 			var accessToken = await GetSessionTokenAsync(user, tokenid);
 
-
-			SessionTokenDto tokendtoDto = new SessionTokenDto()
+            SessionDto tokendtoDto = new SessionDto()
 			{
 				SessionToken = accessToken,
 				User = new()
 				{
 					Id = user.Id,
 					Name = user.Name,
-					UserName = user.UserName,
-					Role = (await _userManager.GetRolesAsync(user))[0],
-					OrganisationId = user.OrganisationId
+					UserName = loginRequestDto.UserName,
+					Role = user.Role,
+                    OrganisationUniqueName = loginRequestDto.OrganisationUniqueName,
 				},
 			};
 			return tokendtoDto;
@@ -86,7 +87,7 @@ namespace DergiMBackend.Services
 				Subject = new ClaimsIdentity(new Claim[]
 				{
 					new Claim(ClaimTypes.Name,applicationUser.Id.ToString()),
-					new Claim(ClaimTypes.Role,roles.FirstOrDefault()),
+					new Claim(ClaimTypes.Role,applicationUser.Role.Name),
 					new Claim(JwtRegisteredClaimNames.Jti, tokenid),
 					new Claim(JwtRegisteredClaimNames.Sub,applicationUser.Id)
 				}),
@@ -102,9 +103,14 @@ namespace DergiMBackend.Services
 
 		public async Task<UserDto> Register(RegistrationRequestDto registrationRequestDto)
 		{
-			ApplicationUser user = new()
+			var role = _db.UserRoles.FirstOrDefaultAsync(
+				r => r.Id.ToString() == registrationRequestDto.Role.Id.ToString() &&
+				r.OrganisationUniqueName == registrationRequestDto.OrganisationUniqueName) ?? throw new InvalidDataException("Role not found");
+
+            ApplicationUser user = new()
 			{
 				Name = registrationRequestDto.Name,
+				Role = role,
 				Email = registrationRequestDto.UserName,
 				NormalizedEmail = registrationRequestDto.UserName.ToUpper(),
 				UserName = registrationRequestDto.UserName,
@@ -124,55 +130,44 @@ namespace DergiMBackend.Services
 					return _mapper.Map<UserDto>(userToReturn);
 				}
 			}
-			catch (Exception ex)
+			catch(Exception ex)
 			{
-
+				throw new Exception(ex.Message);
 			}
-			return null;
+
+			return null!;
 		}
-		public async Task<UserDto> AssignUserToRole(RegistrationRequestDto registrationRequestDto)
+		public async Task<UserDto> AssignUserToRole(string userName, string roleId)
 		{
 			try
 			{
-				var user = await _db.Users.FirstOrDefaultAsync(u => u.UserName == registrationRequestDto.UserName);
-				if (user != null)
-				{
-					if (!await _roleManager.RoleExistsAsync(registrationRequestDto.Role))
-					{
-						await _roleManager.CreateAsync(new IdentityRole(registrationRequestDto.Role));
-					}
+				var user = await _db.Users.FirstOrDefaultAsync(u => u.UserName == userName) ?? throw new InvalidDataException("User not found");
+				var role = await _db.UserRoles.FirstOrDefaultAsync(r => r.Id.ToString() == roleId) ?? throw new InvalidDataException("Role not found");
 
-					var roles = await _userManager.GetRolesAsync(user);
-					await _userManager.RemoveFromRolesAsync(user, roles);
-
-					await _userManager.AddToRoleAsync(user, registrationRequestDto.Role);
-
-					var userToReturn = _db.Users.FirstOrDefault(u => u.UserName == registrationRequestDto.UserName);
-					return _mapper.Map<UserDto>(userToReturn);
-				}
+				var userToReturn = _db.Users.FirstOrDefault(u => u.UserName == userName);
+				return _mapper.Map<UserDto>(userToReturn);
+				
 			}
-			catch (Exception ex)
+			catch 
 			{
+            }
 
-			}
-			return null;
+			return null!;
 		}
 
-		public async Task<IEnumerable<UserDto>> GetUsersAsync(int? organisationId = null)
+		public async Task<IEnumerable<UserDto>> GetUsersAsync(string? organisationUniqueName = null)
 		{
 			var users = await _db.Users.ToListAsync();
 			var result = new List<UserDto>();
 
-			if (organisationId != null)
+			if (organisationUniqueName != null)
 			{
-				users = users.Where(u => u.OrganisationId == organisationId.Value).ToList();
+				users = users.Where(u => u.OrganisationUniqueName == organisationUniqueName).ToList();
 			}
 
 			foreach (var user in users)
 			{
 				var userDto = _mapper.Map<UserDto>(user);
-				var roles = await _userManager.GetRolesAsync(user);
-				userDto.Role = roles.FirstOrDefault();
 				result.Add(userDto);
 			}
 
@@ -184,7 +179,6 @@ namespace DergiMBackend.Services
 		{
 			var user = await _db.Users.FirstOrDefaultAsync(u => u.UserName == username);
 			var result = _mapper.Map<UserDto>(user);
-			result.Role = (await _userManager.GetRolesAsync(user))[0];
 			return result;
 		}
 
@@ -194,19 +188,21 @@ namespace DergiMBackend.Services
 			{
 				var userFromDb = await _db.Users.FirstOrDefaultAsync(u => u.UserName == user.UserName);
 
-				if(userFromDb.OrganisationId != null)
+				if (userFromDb == null) throw new InvalidDataException("User not found");
+
+				if(userFromDb.OrganisationUniqueName != null)
 				{
 					throw new InvalidOperationException("Already assigned to organisation");
 				}
 
-				userFromDb.OrganisationId = user.OrganisationId;
+				userFromDb.OrganisationUniqueName = user.OrganisationUniqueName;
 
 				_db.Update(userFromDb);
 				await _db.SaveChangesAsync();
 
 				return true;
 			}
-			catch (Exception ex)
+			catch
 			{
 				return false;
 			}

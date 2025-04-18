@@ -12,8 +12,9 @@ namespace DergiMBackend.DbContext
 		}
 
 		public DbSet<Organisation> Organisation { get; set; }
-		public DbSet<ApplicationUser> Users { get; set; }
-		public DbSet<Project> Projects { get; set; }
+        public DbSet<ApplicationUser> Users { get; set; }
+        public DbSet<UserRole> UserRoles { get; set; }
+        public DbSet<Project> Projects { get; set; }
 		public DbSet<ProjectFile> ProjectFiles { get; set; }
 
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
