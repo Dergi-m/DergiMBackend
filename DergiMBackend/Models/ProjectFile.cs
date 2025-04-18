@@ -9,6 +9,6 @@ namespace DergiMBackend.Models
 		public required string LocalFileUrl { get; set; }
 		[ForeignKey(nameof(Project))]
 		public int ProjectId { get; set; }
-		public required Project Project { get; set; }
+		public Project? Project { get; set; }
 	}
 }

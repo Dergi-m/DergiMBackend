@@ -50,12 +50,12 @@ namespace DergiMBackend.Controllers
 		}
 
 		[HttpGet("{organisationId:int?}")]
-		public async Task<ResponseDto> Get(int? organisationId = null)
+		public async Task<ResponseDto> GetOrganizationUsers(string? organizationUniqueName = null)
 		{
 			try
 			{
 				ValidateRegisteredUser();
-				var users = await _userService.GetUsersAsync(organisationId);
+				var users = await _userService.GetUsersAsync(organizationUniqueName);
 
 				if (users == null)
 				{
@@ -142,7 +142,7 @@ namespace DergiMBackend.Controllers
 		public async Task<IActionResult> AssignUserToRole([FromBody] RegistrationRequestDto model)
 		{
 			ValidateAdminRole();
-			var user = await _userService.AssignUserToRole(model);
+			var user = await _userService.AssignUserToRole(model.UserName, model.Role.Id.ToString());
 			if (user == null)
 			{
 				_responceDto.StatusCode = System.Net.HttpStatusCode.BadRequest;
