@@ -1,8 +1,12 @@
-﻿namespace DergiMBackend.Models.Dtos
+﻿using System.ComponentModel.DataAnnotations.Schema;
+
+namespace DergiMBackend.Models.Dtos
 {
 	public class LoginRequestDto
 	{
-		public string UserName { get; set; }
-		public string Password { get; set; }
-	}
+		public required string UserName { get; set; }
+		public required string Password { get; set; }
+		[ForeignKey(nameof(Organisation))]
+        public string OrganisationUniqueName { get; set; } = default!;
+    }
 }

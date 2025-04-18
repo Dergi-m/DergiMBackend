@@ -15,6 +15,9 @@ using DergiMBackend.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Validate if secrets are available
+SecretsValidator.Validate(builder.Configuration, builder.Environment);
+
 // Configure DB with Azure Managed Identity
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
@@ -30,7 +33,10 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<ISessionService, SessionService>();
+builder.Services.AddScoped<IUserRoleService, UserRoleService>();
+
+
 builder.Services.AddHttpContextAccessor();
 
 // Configuration bindings

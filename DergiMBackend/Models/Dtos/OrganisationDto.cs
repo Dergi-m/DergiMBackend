@@ -2,8 +2,9 @@
 {
 	public class OrganisationDto
 	{
-		public int Id { get; set; }
-		public string Name { get; set; }
-		public string Description { get; set; }
-	}
+		public required string UniqueName { get; set; }
+		public string? Description { get; set; }
+		public List<UserRole> UserRoles { get; set; } = new List<UserRole>();
+        public List<ProjectDto> Projects { get; set; } = new List<ProjectDto>();
+    }
 }

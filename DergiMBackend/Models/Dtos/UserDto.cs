@@ -1,11 +1,13 @@
-﻿namespace DergiMBackend.Models.Dtos
+﻿
+namespace DergiMBackend.Models.Dtos
 {
 	public class UserDto
 	{
-		public string? Id { get; set; }
+		public required string Id { get; set; } = default!;
 		public string? Name { get; set; }
-		public string? UserName { get; set; }
-		public string? Role { get; set; }
-		public int? OrganisationId { get; set; }
-	}
+		public required string UserName { get; set; }
+		public UserRole? Role { get; set; }
+		public required string OrganisationUniqueName { get; set; }
+
+    }
 }

@@ -19,14 +19,14 @@ namespace DergiMBackend.Controllers
 		private readonly ApplicationDbContext _db;
 		private readonly IMapper _mapper;
 		private readonly IConfiguration _configuration;
-		private readonly ITokenService _tokenService;
-		private ResponceDto _responceDto;
+		private readonly ISessionService _tokenService;
+		private ResponseDto _responceDto;
 
-		public ProjectController(ApplicationDbContext db, IMapper mapper, IConfiguration configuration, ITokenService tokenService)
+		public ProjectController(ApplicationDbContext db, IMapper mapper, IConfiguration configuration, ISessionService tokenService)
 		{
 			_db = db;
 			_mapper = mapper;
-			_responceDto = new ResponceDto();
+			_responceDto = new ResponseDto();
 			_configuration = configuration;
 			_tokenService = tokenService;
 		}
@@ -58,7 +58,7 @@ namespace DergiMBackend.Controllers
 		}
 
 		[HttpGet("{organisationId:int?}")]
-		public async Task<ResponceDto> Get(int? organisationId = null)
+		public async Task<ResponseDto> Get(int? organisationId = null)
 		{
 			try
 			{
@@ -83,7 +83,7 @@ namespace DergiMBackend.Controllers
 		}
 
 		[HttpGet("getProject/{projectId:int}")]
-		public async Task<ResponceDto> Get(int projectId)
+		public async Task<ResponseDto> Get(int projectId)
 		{
 			try
 			{
@@ -103,7 +103,7 @@ namespace DergiMBackend.Controllers
 		}
 
 		[HttpPost]
-		public async Task<ResponceDto> Create(ProjectDto projectDto)
+		public async Task<ResponseDto> Create(ProjectDto projectDto)
 		{
 			try
 			{
@@ -126,7 +126,7 @@ namespace DergiMBackend.Controllers
 		}
 
 		[HttpPut]
-		public async Task<ResponceDto> Update(ProjectDto projectDto)
+		public async Task<ResponseDto> Update(ProjectDto projectDto)
 		{
 			try
 			{
@@ -153,7 +153,7 @@ namespace DergiMBackend.Controllers
 
 		[Authorize(Roles = SD.RoleADMIN)]
 		[HttpDelete("{id:int}")]
-		public async Task<ResponceDto> Delete(int id)
+		public async Task<ResponseDto> Delete(int id)
 		{
 			try
 			{
@@ -175,7 +175,7 @@ namespace DergiMBackend.Controllers
 		}
 
 		[HttpPost("addFile")]
-		public async Task<ResponceDto> AddFile([FromForm]ProjectFileDto projectFileDto)
+		public async Task<ResponseDto> AddFile([FromForm]ProjectFileDto projectFileDto)
 		{
 			try
 			{
@@ -234,7 +234,7 @@ namespace DergiMBackend.Controllers
 		}
 
 		[HttpDelete("deleteFile/{id:int}")]
-		public async Task<ResponceDto> DeleteFile(int id)
+		public async Task<ResponseDto> DeleteFile(int id)
 		{
 			try
 			{
