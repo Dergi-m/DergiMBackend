@@ -21,7 +21,7 @@ SecretsValidator.Validate(builder.Configuration, builder.Environment);
 // Configure DB with Azure Managed Identity
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    var connection = new SqlConnection("Server=tcp:dergim-db.database.windows.net,1433;Database=dergim-db;Encrypt=True;TrustServerCertificate=False;");
+    var connection = new SqlConnection(builder.Configuration["AzureSql:ConnectionString"]);
     var credential = new DefaultAzureCredential();
     var token = credential.GetToken(new Azure.Core.TokenRequestContext(new[] { "https://database.windows.net/.default" }));
     connection.AccessToken = token.Token;
