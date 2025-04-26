@@ -5,6 +5,6 @@ namespace DergiMBackend.Models
     public class ApplicationUser : IdentityUser
     {
         public string Name { get; set; } = default!;
-        public ICollection<OrganisationMembership> Memberships { get; set; } = new List<OrganisationMembership>();
+        public List<OrganisationMembership> OrganisationMemberships { get; set; } = new();
     }
 }
