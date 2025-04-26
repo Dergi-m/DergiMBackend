@@ -3,47 +3,68 @@ using DergiMBackend.Models;
 using DergiMBackend.Services.IServices;
 using Microsoft.EntityFrameworkCore;
 
-public class UserRoleService : IUserRoleService
+namespace DergiMBackend.Services
 {
-    private readonly ApplicationDbContext _context;
-
-    public UserRoleService(ApplicationDbContext context)
+    public class UserRoleService : IUserRoleService
     {
-        _context = context;
-    }
+        private readonly ApplicationDbContext _context;
 
-    public async Task<IEnumerable<UserRole>> GetAllRolesAsync() => await _context.UserRoles.ToListAsync();
+        public UserRoleService(ApplicationDbContext context)
+        {
+            _context = context;
+        }
 
-    public async Task<UserRole?> GetRoleByIdAsync(Guid id) => await _context.UserRoles.FindAsync(id);
+        public async Task<IEnumerable<UserRole>> GetAllRolesAsync(string organisationUniqueName)
+        {
+            var roles = await _context.OrganisationRoles
+                .Where(r => r.OrganisationUniqueName == organisationUniqueName)
+                .ToListAsync();
 
-    public async Task<UserRole> CreateRoleAsync(UserRole role)
-    {
-        _context.UserRoles.Add(role);
-        await _context.SaveChangesAsync();
-        return role;
-    }
+            return roles;
+        }
 
-    public async Task<bool> DeleteRoleAsync(Guid id)
-    {
-        var role = await _context.UserRoles.FindAsync(id);
-        if (role == null) return false;
-        _context.UserRoles.Remove(role);
-        await _context.SaveChangesAsync();
-        return true;
-    }
+        public async Task<UserRole?> GetRoleByIdAsync(Guid id)
+        {
+            return await _context.OrganisationRoles.FindAsync(id);
+        }
 
-    public async Task<UserRole> UpdateRoleAsync(UserRole updatedRole)
-    {
-        var existing = await _context.UserRoles.FindAsync(updatedRole.Id);
-        if (existing == null) throw new KeyNotFoundException();
+        public async Task<UserRole> CreateRoleAsync(UserRole role)
+        {
+            // Validate organisation exists
+            var organisation = await _context.Organisations.FirstOrDefaultAsync(o => o.UniqueName == role.OrganisationUniqueName);
+            if (organisation == null)
+                throw new InvalidOperationException("Organisation not found.");
 
-        existing.Name = updatedRole.Name;
-        existing.VisibleTags = updatedRole.VisibleTags;
-        existing.CanAssignTasks = updatedRole.CanAssignTasks;
-        existing.CanCreateTasks = updatedRole.CanCreateTasks;
-        existing.Description = updatedRole.Description;
+            _context.OrganisationRoles.Add(role);
+            await _context.SaveChangesAsync();
+            return role;
+        }
 
-        await _context.SaveChangesAsync();
-        return existing;
+        public async Task<bool> DeleteRoleAsync(Guid id)
+        {
+            var role = await _context.OrganisationRoles.FindAsync(id);
+            if (role == null) return false;
+
+            _context.OrganisationRoles.Remove(role);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<UserRole> UpdateRoleAsync(UserRole updatedRole)
+        {
+            var existing = await _context.OrganisationRoles.FindAsync(updatedRole.Id);
+            if (existing == null)
+                throw new KeyNotFoundException("Role not found.");
+
+            // Update properties
+            existing.Name = updatedRole.Name;
+            existing.VisibleTags = updatedRole.VisibleTags;
+            existing.CanAssignTasks = updatedRole.CanAssignTasks;
+            existing.CanCreateTasks = updatedRole.CanCreateTasks;
+            existing.Description = updatedRole.Description;
+
+            await _context.SaveChangesAsync();
+            return existing;
+        }
     }
 }

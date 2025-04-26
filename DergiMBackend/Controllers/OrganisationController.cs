@@ -1,179 +1,160 @@
 ﻿using AutoMapper;
 using DergiMBackend.DbContext;
-using DergiMBackend.Models.Dtos;
 using DergiMBackend.Models;
-using Microsoft.AspNetCore.Http;
+using DergiMBackend.Models.Dtos;
+using DergiMBackend.Services.IServices;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authorization;
-using DergiMBackend.Services.IServices;
-using Microsoft.AspNetCore.Http.HttpResults;
+using System.Net;
 
 namespace DergiMBackend.Controllers
 {
-	[Route("api/organisations")]
-	[Authorize]
-	[ApiController]
-	public class OrganisationController : ControllerBase
-	{
-		private readonly ApplicationDbContext _db;
-		private readonly IMapper _mapper;
-		private ResponseDto _responseDto;
-		public ISessionService _sessionService;
+    [Route("api/organisations")]
+    [Authorize]
+    [ApiController]
+    public class OrganisationController : ControllerBase
+    {
+        private readonly ApplicationDbContext _db;
+        private readonly IMapper _mapper;
+        private readonly ISessionService _sessionService;
+        private readonly ResponseDto _responseDto = new();
 
-		public OrganisationController(ApplicationDbContext db, IMapper mapper, ISessionService tokenService)
-		{
-			_db = db;
-			_mapper = mapper;
-			_responseDto = new ResponseDto();
-			_sessionService = tokenService;
-		}
+        public OrganisationController(ApplicationDbContext db, IMapper mapper, ISessionService sessionService)
+        {
+            _db = db;
+            _mapper = mapper;
+            _sessionService = sessionService;
+        }
 
-		private void ValidateRegisteredUser()
-		{
-			var sessionToken = Request.Headers["SessionToken"].ToString();
-			if (string.IsNullOrEmpty(sessionToken))
-			{
-				throw new UnauthorizedAccessException("SessionToken is required.");
-			}
+        private void ValidateSession(bool requireAdmin = false)
+        {
+            var sessionToken = Request.Headers["SessionToken"].ToString();
+            if (string.IsNullOrEmpty(sessionToken))
+                throw new UnauthorizedAccessException("SessionToken is required.");
 
-			_sessionService.ValidateSessionToken(sessionToken);
-		}
+            var role = _sessionService.ValidateSessionToken(sessionToken);
+            if (requireAdmin && role != SD.RoleADMIN)
+                throw new UnauthorizedAccessException("Admin privileges required.");
+        }
 
-		private void ValidateAdminRole()
-		{
-			var sessionToken = Request.Headers["SessionToken"].ToString();
-			if (string.IsNullOrEmpty(sessionToken))
-			{
-				throw new UnauthorizedAccessException("SessionToken is required.");
-			}
+        [HttpGet]
+        public async Task<ResponseDto> GetAllOrganisations()
+        {
+            try
+            {
+                ValidateSession();
+                var organisations = await _db.Organisations.ToListAsync();
+                _responseDto.Result = _mapper.Map<List<OrganisationDto>>(organisations);
+                _responseDto.Success = true;
+                _responseDto.StatusCode = HttpStatusCode.OK;
+            }
+            catch (Exception ex)
+            {
+                _responseDto.Success = false;
+                _responseDto.Message = ex.Message;
+            }
+            return _responseDto;
+        }
 
-			var role = _sessionService.ValidateSessionToken(sessionToken);
-			if (role != SD.RoleADMIN)
-			{
-				throw new UnauthorizedAccessException("You do not have the required ADMIN role.");
-			}
-		}
+        [HttpGet("{uniqueName}")]
+        public async Task<ResponseDto> GetOrganisation(string uniqueName)
+        {
+            try
+            {
+                ValidateSession();
+                var organisation = await _db.Organisations.FirstOrDefaultAsync(x => x.UniqueName == uniqueName);
 
-		[HttpGet]
-		public async Task<ResponseDto> Get()
-		{
-			try
-			{
-				ValidateRegisteredUser();
-				List<Organisation> organisations = await _db.Organisation.ToListAsync();
+                if (organisation == null)
+                    throw new KeyNotFoundException("Organisation not found.");
 
-				_responseDto.Success = true;
-				_responseDto.Result = _mapper.Map<List<OrganisationDto>>(organisations);
-				_responseDto.StatusCode = System.Net.HttpStatusCode.OK;
-			}
-			catch (Exception ex)
-			{
-				_responseDto.Success = false;
-				_responseDto.Message = ex.Message;
-			}
-			return _responseDto;
-		}
+                _responseDto.Result = _mapper.Map<OrganisationDto>(organisation);
+                _responseDto.Success = true;
+                _responseDto.StatusCode = HttpStatusCode.OK;
+            }
+            catch (Exception ex)
+            {
+                _responseDto.Success = false;
+                _responseDto.Message = ex.Message;
+            }
+            return _responseDto;
+        }
 
-		[HttpGet("{id:int}")]
-		public async Task<ResponseDto> Get(string uniqueName)
-		{
-			try
-			{
-				ValidateRegisteredUser();
-				var organisation = await _db.Organisation.FirstOrDefaultAsync(org => org.UniqueName == uniqueName);
+        [HttpPost]
+        public async Task<ResponseDto> CreateOrganisation([FromBody] OrganisationDto organisationDto)
+        {
+            try
+            {
+                ValidateSession(requireAdmin: true);
 
-				_responseDto.Success = true;
-				_responseDto.Result = _mapper.Map<OrganisationDto>(organisation);
-				_responseDto.StatusCode = System.Net.HttpStatusCode.OK;
-			}
-			catch (Exception ex)
-			{
-				_responseDto.Success = false;
-				_responseDto.Message = ex.Message;
-			}
-			return _responseDto;
-		}
+                var organisation = _mapper.Map<Organisation>(organisationDto);
+                await _db.Organisations.AddAsync(organisation);
+                await _db.SaveChangesAsync();
 
-		[HttpPost]
-		public async Task<ResponseDto> Create(OrganisationDto organisationDto)
-		{
-			try
-			{
-				ValidateAdminRole();
-				var organisation = _mapper.Map<Organisation>(organisationDto);
+                _responseDto.Result = _mapper.Map<OrganisationDto>(organisation);
+                _responseDto.Success = true;
+                _responseDto.StatusCode = HttpStatusCode.Created;
+            }
+            catch (Exception ex)
+            {
+                _responseDto.Success = false;
+                _responseDto.Message = ex.Message;
+            }
+            return _responseDto;
+        }
 
-				await _db.Organisation.AddAsync(organisation);
-				await _db.SaveChangesAsync();
+        [HttpPut]
+        public async Task<ResponseDto> UpdateOrganisation([FromBody] OrganisationDto organisationDto)
+        {
+            try
+            {
+                ValidateSession(requireAdmin: true);
 
-				_responseDto.Success = true;
-				_responseDto.Result = _mapper.Map<OrganisationDto>(organisation);
-				_responseDto.StatusCode = System.Net.HttpStatusCode.OK;
-			}
-			catch (Exception ex)
-			{
-				_responseDto.Success = false;
-				_responseDto.Message = ex.Message;
-			}
-			return _responseDto;
-		}
+                var organisation = await _db.Organisations.FirstOrDefaultAsync(x => x.UniqueName == organisationDto.UniqueName);
+                if (organisation == null)
+                    throw new KeyNotFoundException("Organisation not found.");
 
-		[HttpPut]
-		public async Task<ResponseDto> Update(OrganisationDto organisationDto)
-		{
-                try
-			{
-				ValidateAdminRole();
-                var organisation = await _db.Organisation.FirstOrDefaultAsync(org => org.UniqueName == organisationDto.UniqueName);
+                organisation.Name = organisationDto.Name;
+                organisation.Description = organisationDto.Description;
 
-				if(organisation == null)
-				{
-					throw new Exception("Organisation not found");
-				}
+                _db.Organisations.Update(organisation);
+                await _db.SaveChangesAsync();
 
+                _responseDto.Result = _mapper.Map<OrganisationDto>(organisation);
+                _responseDto.Success = true;
+                _responseDto.StatusCode = HttpStatusCode.OK;
+            }
+            catch (Exception ex)
+            {
+                _responseDto.Success = false;
+                _responseDto.Message = ex.Message;
+            }
+            return _responseDto;
+        }
 
-                organisation.Description = organisationDto.Description!;
+        [HttpDelete("{uniqueName}")]
+        public async Task<ResponseDto> DeleteOrganisation(string uniqueName)
+        {
+            try
+            {
+                ValidateSession(requireAdmin: true);
 
-				_db.Organisation.Update(organisation);
-				await _db.SaveChangesAsync();
+                var organisation = await _db.Organisations.FirstOrDefaultAsync(x => x.UniqueName == uniqueName);
+                if (organisation == null)
+                    throw new KeyNotFoundException("Organisation not found.");
 
-				_responseDto.Success = true;
-				_responseDto.Result = _mapper.Map<OrganisationDto>(organisation);
-				_responseDto.StatusCode = System.Net.HttpStatusCode.OK;
-			}
-			catch (Exception ex)
-			{
-				_responseDto.Success = false;
-				_responseDto.Message = ex.Message;
-			}
-			return _responseDto;
-		}
+                _db.Organisations.Remove(organisation);
+                await _db.SaveChangesAsync();
 
-		[Authorize(Roles = SD.RoleADMIN)]
-		[HttpDelete("{id:int}")]
-		public async Task<ResponseDto> Delete(string uniqueName)
-		{
-			try
-			{
-				ValidateAdminRole();
-				var organisation = await _db.Organisation.FirstOrDefaultAsync(u => u.UniqueName == uniqueName);
-
-				if(organisation != null)
-				{
-					_db.Organisation.Remove(organisation);
-					await _db.SaveChangesAsync();
-
-				}
-
-				_responseDto.Success = true;
-				_responseDto.StatusCode = System.Net.HttpStatusCode.OK;
-			}
-			catch (Exception ex)
-			{
-				_responseDto.Success = false;
-				_responseDto.Message = ex.Message;
-			}
-			return _responseDto;
-		}
-	}
+                _responseDto.Success = true;
+                _responseDto.StatusCode = HttpStatusCode.NoContent;
+            }
+            catch (Exception ex)
+            {
+                _responseDto.Success = false;
+                _responseDto.Message = ex.Message;
+            }
+            return _responseDto;
+        }
+    }
 }
