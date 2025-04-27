@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DergiMBackend.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250426215236_InitialCreate")]
+    [Migration("20250426224704_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
