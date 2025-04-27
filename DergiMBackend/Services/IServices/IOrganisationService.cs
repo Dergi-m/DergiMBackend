@@ -4,12 +4,11 @@ namespace DergiMBackend.Services.IServices
 {
     public interface IOrganisationService
     {
-        Task<List<Organisation>> GetAllAsync();
-        Task<Organisation?> GetByIdAsync(Guid id);
-        Task<Organisation?> GetByUniqueNameAsync(string uniqueName);
-        Task<Organisation> CreateAsync(Organisation organisation);
-        Task<Organisation> UpdateAsync(Organisation organisation);
-        Task<bool> DeleteAsync(Guid id);
-        Task SaveChangesAsync();
+        Task<IEnumerable<Organisation>> GetAllOrganisationsAsync();
+        Task<Organisation?> GetOrganisationByIdAsync(Guid id);
+        Task<Organisation?> GetOrganisationByUniqueNameAsync(string uniqueName);
+        Task<Organisation> CreateOrganisationAsync(string uniqueName, string name, string? description, ApplicationUser owner);
+        Task<Organisation?> UpdateOrganisationAsync(Guid organisationId, string? name, string? description); // 💥 Fixed
+        Task<bool> DeleteOrganisationAsync(Guid id);
     }
 }

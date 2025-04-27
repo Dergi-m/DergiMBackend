@@ -1,6 +1,5 @@
 ﻿using DergiMBackend.DbContext;
 using DergiMBackend.Models;
-using DergiMBackend.Models.Dtos;
 using DergiMBackend.Services.IServices;
 using Microsoft.EntityFrameworkCore;
 
@@ -24,6 +23,15 @@ namespace DergiMBackend.Services
                 .ToListAsync();
         }
 
+        public async Task<List<OrganisationMembership>> GetMembershipsForUserAsync(string userId)
+        {
+            return await _dbContext.OrganisationMemberships
+                .Include(m => m.Organisation)
+                .Include(m => m.Role)
+                .Where(m => m.UserId == userId)
+                .ToListAsync();
+        }
+
         public async Task<OrganisationMembership?> GetMembershipByIdAsync(Guid membershipId)
         {
             return await _dbContext.OrganisationMemberships
@@ -32,15 +40,8 @@ namespace DergiMBackend.Services
                 .FirstOrDefaultAsync(m => m.Id == membershipId);
         }
 
-        public async Task<OrganisationMembership> CreateMembershipAsync(CreateMembershipDto dto)
+        public async Task<OrganisationMembership> CreateMembershipAsync(OrganisationMembership membership)
         {
-            var membership = new OrganisationMembership
-            {
-                UserId = dto.UserId,
-                OrganisationId = dto.OrganisationId,
-                RoleId = dto.RoleId
-            };
-
             _dbContext.OrganisationMemberships.Add(membership);
             await _dbContext.SaveChangesAsync();
             return membership;
@@ -54,20 +55,6 @@ namespace DergiMBackend.Services
             _dbContext.OrganisationMemberships.Remove(membership);
             await _dbContext.SaveChangesAsync();
             return true;
-        }
-
-        public async Task<List<OrganisationMembership>> GetMembershipsForUserAsync(string userId)
-        {
-            return await _dbContext.OrganisationMemberships
-                .Include(m => m.Organisation)
-                .Include(m => m.Role)
-                .Where(m => m.UserId == userId)
-                .ToListAsync();
-        }
-
-        public async Task SaveChangesAsync()
-        {
-            await _dbContext.SaveChangesAsync();
         }
     }
 }

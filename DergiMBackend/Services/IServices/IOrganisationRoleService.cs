@@ -4,9 +4,10 @@ namespace DergiMBackend.Services.IServices
 {
     public interface IOrganisationRoleService
     {
-        Task<IEnumerable<OrganisationRole>> GetRolesByOrganisationAsync(Guid organisationId);
+        Task<List<OrganisationRole>> GetRolesForOrganisationAsync(Guid organisationId);
+        Task<OrganisationRole?> GetRoleByIdAsync(Guid roleId);
         Task<OrganisationRole> CreateRoleAsync(Guid organisationId, OrganisationRole role);
-        Task<OrganisationRole> UpdateRoleAsync(Guid roleId, OrganisationRole role);
+        Task<OrganisationRole> UpdateRoleAsync(OrganisationRole role);
         Task<bool> DeleteRoleAsync(Guid roleId);
     }
 }

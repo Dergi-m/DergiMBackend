@@ -1,91 +1,90 @@
-﻿using DergiMBackend.DbContext;
+﻿using DergiMBackend.Authorization;
 using DergiMBackend.Models;
+using DergiMBackend.Models.Dtos;
 using DergiMBackend.Services.IServices;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace DergiMBackend.Controllers
 {
-    [Authorize]
-    [ApiController]
     [Route("api/organisations")]
+    [ApiController]
     public class OrganisationController : ControllerBase
     {
-        private readonly ApplicationDbContext _db;
+        private readonly IOrganisationService _organisationService;
+        private readonly IUserService _userService;
 
-        public OrganisationController(ApplicationDbContext db)
+        public OrganisationController(
+            IOrganisationService organisationService,
+            IUserService userService)
         {
-            _db = db;
+            _organisationService = organisationService;
+            _userService = userService;
         }
 
-        /// <summary>
-        /// List all organisations.
-        /// </summary>
         [HttpGet]
+        [SessionAuthorize]
         public async Task<IActionResult> GetAll()
         {
-            var organisations = await _db.Organisations.ToListAsync();
+            var organisations = await _organisationService.GetAllOrganisationsAsync();
             return Ok(organisations);
         }
 
-        /// <summary>
-        /// Get a single organisation by UniqueName.
-        /// </summary>
-        [HttpGet("{uniqueName}")]
-        public async Task<IActionResult> Get(string uniqueName)
+        [HttpGet("{id:guid}")]
+        [SessionAuthorize]
+        public async Task<IActionResult> Get(Guid id)
         {
-            var organisation = await _db.Organisations.FirstOrDefaultAsync(o => o.UniqueName == uniqueName);
+            var organisation = await _organisationService.GetOrganisationByIdAsync(id);
             if (organisation == null)
-                return NotFound("Organisation not found.");
+                return NotFound();
 
             return Ok(organisation);
         }
 
-        /// <summary>
-        /// Create a new organisation.
-        /// </summary>
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] Organisation organisation)
+        [SessionAuthorize]
+        public async Task<IActionResult> Create([FromBody] CreateOrganisationDto dto)
         {
-            if (await _db.Organisations.AnyAsync(o => o.UniqueName == organisation.UniqueName))
-                return BadRequest("Organisation with this unique name already exists.");
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
 
-            await _db.Organisations.AddAsync(organisation);
-            await _db.SaveChangesAsync();
-            return CreatedAtAction(nameof(Get), new { uniqueName = organisation.UniqueName }, organisation);
+            var userId = HttpContext.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+
+            var user = await _userService.GetUserEntityByIdAsync(userId);
+            if (user == null)
+                return Unauthorized();
+
+            var createdOrganisation = await _organisationService.CreateOrganisationAsync(
+                uniqueName: dto.UniqueName,
+                name: dto.Name,
+                description: dto.Description,
+                owner: user
+            );
+
+            return CreatedAtAction(nameof(Get), new { id = createdOrganisation.Id }, createdOrganisation);
         }
 
-        /// <summary>
-        /// Update an organisation's basic details.
-        /// </summary>
-        [HttpPut("{uniqueName}")]
-        public async Task<IActionResult> Update(string uniqueName, [FromBody] Organisation updatedOrganisation)
+        [HttpPut("{id:guid}")]
+        [SessionAuthorize]
+        public async Task<IActionResult> Update(Guid id, [FromBody] UpdateOrganisationDto dto)
         {
-            var organisation = await _db.Organisations.FirstOrDefaultAsync(o => o.UniqueName == uniqueName);
-            if (organisation == null)
-                return NotFound("Organisation not found.");
+            var updated = await _organisationService.UpdateOrganisationAsync(id, dto.Name, dto.Description);
+            if (updated == null)
+                return NotFound();
 
-            organisation.Name = updatedOrganisation.Name;
-            organisation.Description = updatedOrganisation.Description;
-
-            _db.Organisations.Update(organisation);
-            await _db.SaveChangesAsync();
-            return Ok(organisation);
+            return Ok(updated);
         }
 
-        /// <summary>
-        /// Delete an organisation.
-        /// </summary>
-        [HttpDelete("{uniqueName}")]
-        public async Task<IActionResult> Delete(string uniqueName)
+        [HttpDelete("{id:guid}")]
+        [SessionAuthorize]
+        public async Task<IActionResult> Delete(Guid id)
         {
-            var organisation = await _db.Organisations.FirstOrDefaultAsync(o => o.UniqueName == uniqueName);
-            if (organisation == null)
-                return NotFound("Organisation not found.");
+            var deleted = await _organisationService.DeleteOrganisationAsync(id);
+            if (!deleted)
+                return NotFound();
 
-            _db.Organisations.Remove(organisation);
-            await _db.SaveChangesAsync();
             return NoContent();
         }
     }

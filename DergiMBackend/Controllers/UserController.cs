@@ -1,4 +1,4 @@
-﻿using DergiMBackend.Models;
+﻿using DergiMBackend.Authorization;
 using DergiMBackend.Models.Dtos;
 using DergiMBackend.Services.IServices;
 using Microsoft.AspNetCore.Authorization;
@@ -11,44 +11,61 @@ namespace DergiMBackend.Controllers
     public class UserController : ControllerBase
     {
         private readonly IUserService _userService;
-        private readonly ISessionService _sessionService;
 
-        public UserController(IUserService userService, ISessionService sessionService)
+        public UserController(IUserService userService)
         {
             _userService = userService;
-            _sessionService = sessionService;
         }
 
         [HttpPost("login")]
-        [AllowAnonymous]
-        public async Task<ActionResult<SessionDto>> Login([FromBody] LoginRequestDto request)
+        public async Task<IActionResult> Login([FromBody] LoginRequestDto model)
         {
-            var result = await _userService.LoginAsync(request);
-            return Ok(result);
+            try
+            {
+                var session = await _userService.LoginAsync(model);
+                return Ok(session);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
         }
 
         [HttpPost("register")]
-        [AllowAnonymous]
-        public async Task<ActionResult<SessionDto>> Register([FromBody] RegistrationRequestDto request)
+        public async Task<IActionResult> Register([FromBody] RegistrationRequestDto model)
         {
-            var result = await _userService.RegisterAsync(request);
-            return Ok(result);
-        }
+            var isUnique = await _userService.IsUserUniqueAsync(model.UserName);
+            if (!isUnique)
+                return BadRequest(new { error = "Username already exists" });
 
-        [HttpGet]
-        [Authorize]
-        public async Task<ActionResult<IEnumerable<UserDto>>> GetUsers()
-        {
-            var users = await _userService.GetUsersAsync();
-            return Ok(users);
+            try
+            {
+                var session = await _userService.RegisterAsync(model);
+                return Ok(session);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
         }
 
         [HttpGet("{username}")]
-        [Authorize]
-        public async Task<ActionResult<UserDto>> GetUser(string username)
+        [SessionAuthorize]
+        public async Task<IActionResult> GetUser(string username)
         {
             var user = await _userService.GetUserAsync(username);
+            if (user == null)
+                return NotFound(new { error = "User not found" });
+
             return Ok(user);
+        }
+
+        [HttpGet]
+        [SessionAuthorize]
+        public async Task<IActionResult> GetAllUsers()
+        {
+            var users = await _userService.GetUsersAsync();
+            return Ok(users);
         }
     }
 }

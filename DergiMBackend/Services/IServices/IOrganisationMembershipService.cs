@@ -1,5 +1,4 @@
 ﻿using DergiMBackend.Models;
-using DergiMBackend.Models.Dtos;
 
 namespace DergiMBackend.Services.IServices
 {
@@ -8,8 +7,7 @@ namespace DergiMBackend.Services.IServices
         Task<List<OrganisationMembership>> GetMembershipsForOrganisationAsync(Guid organisationId);
         Task<List<OrganisationMembership>> GetMembershipsForUserAsync(string userId);
         Task<OrganisationMembership?> GetMembershipByIdAsync(Guid membershipId);
-        Task<OrganisationMembership> CreateMembershipAsync(CreateMembershipDto dto);
+        Task<OrganisationMembership> CreateMembershipAsync(OrganisationMembership membership);
         Task<bool> DeleteMembershipAsync(Guid membershipId);
-        Task SaveChangesAsync();
     }
 }

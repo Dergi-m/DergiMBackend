@@ -15,7 +15,10 @@ namespace DergiMBackend
                     .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
                     .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.Name))
                     .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.UserName))
-                    .ReverseMap();
+                    .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Email))
+                    .ForMember(dest => dest.Age, opt => opt.MapFrom(src => src.Age))
+                    .ForMember(dest => dest.Gender, opt => opt.MapFrom(src => src.Gender));
+
 
                 // --- Organisation mappings ---
                 config.CreateMap<Organisation, OrganisationDto>()

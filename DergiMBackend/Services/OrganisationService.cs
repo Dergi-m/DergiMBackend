@@ -14,7 +14,7 @@ namespace DergiMBackend.Services
             _dbContext = dbContext;
         }
 
-        public async Task<List<Organisation>> GetAllAsync()
+        public async Task<IEnumerable<Organisation>> GetAllOrganisationsAsync()
         {
             return await _dbContext.Organisations
                 .Include(o => o.OrganisationRoles)
@@ -22,7 +22,7 @@ namespace DergiMBackend.Services
                 .ToListAsync();
         }
 
-        public async Task<Organisation?> GetByIdAsync(Guid id)
+        public async Task<Organisation?> GetOrganisationByIdAsync(Guid id)
         {
             return await _dbContext.Organisations
                 .Include(o => o.OrganisationRoles)
@@ -30,7 +30,7 @@ namespace DergiMBackend.Services
                 .FirstOrDefaultAsync(o => o.Id == id);
         }
 
-        public async Task<Organisation?> GetByUniqueNameAsync(string uniqueName)
+        public async Task<Organisation?> GetOrganisationByUniqueNameAsync(string uniqueName)
         {
             return await _dbContext.Organisations
                 .Include(o => o.OrganisationRoles)
@@ -38,33 +38,50 @@ namespace DergiMBackend.Services
                 .FirstOrDefaultAsync(o => o.UniqueName == uniqueName);
         }
 
-        public async Task<Organisation> CreateAsync(Organisation organisation)
+        public async Task<Organisation> CreateOrganisationAsync(string uniqueName, string name, string? description, ApplicationUser owner)
         {
+            var organisation = new Organisation
+            {
+                UniqueName = uniqueName,
+                Name = name,
+                Description = description,
+                Owner = owner,
+                OrganisationRoles = new List<OrganisationRole>(),
+                OrganisationMemberships = new List<OrganisationMembership>()
+            };
+
             _dbContext.Organisations.Add(organisation);
             await _dbContext.SaveChangesAsync();
             return organisation;
         }
 
-        public async Task<Organisation> UpdateAsync(Organisation organisation)
+        public async Task<Organisation?> UpdateOrganisationAsync(Guid organisationId, string? name, string? description)
         {
+            var organisation = await _dbContext.Organisations.FindAsync(organisationId);
+
+            if (organisation == null)
+                return null;
+
+            if (!string.IsNullOrWhiteSpace(name))
+                organisation.Name = name;
+
+            if (!string.IsNullOrWhiteSpace(description))
+                organisation.Description = description;
+
             _dbContext.Organisations.Update(organisation);
             await _dbContext.SaveChangesAsync();
             return organisation;
         }
 
-        public async Task<bool> DeleteAsync(Guid id)
+        public async Task<bool> DeleteOrganisationAsync(Guid id)
         {
             var organisation = await _dbContext.Organisations.FindAsync(id);
-            if (organisation == null) return false;
+            if (organisation == null)
+                return false;
 
             _dbContext.Organisations.Remove(organisation);
             await _dbContext.SaveChangesAsync();
             return true;
-        }
-
-        public async Task SaveChangesAsync()
-        {
-            await _dbContext.SaveChangesAsync();
         }
     }
 }

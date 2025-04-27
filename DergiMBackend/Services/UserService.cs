@@ -5,7 +5,7 @@ using DergiMBackend.Models.Dtos;
 using DergiMBackend.Services.IServices;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -17,101 +17,123 @@ namespace DergiMBackend.Services
     {
         private readonly ApplicationDbContext _db;
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly RoleManager<IdentityRole> _roleManager;
-        private readonly ISessionService _sessionService;
         private readonly IMapper _mapper;
+        private readonly ApiSettings _apiSettings;
+        private readonly ISessionService _sessionService;
 
         public UserService(
             ApplicationDbContext db,
             UserManager<ApplicationUser> userManager,
-            RoleManager<IdentityRole> roleManager,
+            IMapper mapper,
             ISessionService sessionService,
-            IMapper mapper)
+            IOptions<ApiSettings> apiSettings)
         {
             _db = db;
             _userManager = userManager;
-            _roleManager = roleManager;
-            _sessionService = sessionService;
             _mapper = mapper;
+            _sessionService = sessionService;
+            _apiSettings = apiSettings.Value;
         }
 
-        public async Task<SessionDto> LoginAsync(LoginRequestDto request)
+        public async Task<SessionDto> LoginAsync(LoginRequestDto loginRequestDto)
         {
             var user = await _userManager.Users
-                .FirstOrDefaultAsync(u => u.UserName!.ToLower() == request.UserName.ToLower());
+                .FirstOrDefaultAsync(u => u.UserName!.ToLower() == loginRequestDto.UserName.ToLower());
 
-            if (user == null)
-                throw new UnauthorizedAccessException("Invalid username or password.");
+            if (user == null || !await _userManager.CheckPasswordAsync(user, loginRequestDto.Password))
+                throw new UnauthorizedAccessException("Invalid credentials.");
 
-            var validPassword = await _userManager.CheckPasswordAsync(user, request.Password);
-            if (!validPassword)
-                throw new UnauthorizedAccessException("Invalid username or password.");
-
-            var sessionToken = await _sessionService.GenerateSessionTokenAsync(user);
+            var sessionToken = await GenerateSessionTokenAsync(user);
 
             return new SessionDto
             {
                 SessionToken = sessionToken,
-                User = _mapper.Map<UserDto>(user)
+                User = _mapper.Map<UserDto>(user),
+                Organisations = new List<OrganisationMembershipDto>() // Optional to populate
             };
         }
 
-        public async Task<SessionDto> RegisterAsync(RegistrationRequestDto request)
+        public async Task<SessionDto> RegisterAsync(RegistrationRequestDto registrationRequest)
         {
-            var user = new ApplicationUser
+            if (!await IsUserUniqueAsync(registrationRequest.UserName))
+                throw new InvalidOperationException("Username already exists.");
+
+            var newUser = new ApplicationUser
             {
-                UserName = request.UserName,
-                Email = request.UserName,
-                NormalizedEmail = request.UserName.ToUpper(),
-                Name = request.Name,
+                UserName = registrationRequest.UserName,
+                Email = registrationRequest.Email,
+                Name = registrationRequest.Name,
+                Age = registrationRequest.Age,
+                Gender = registrationRequest.Gender,
             };
 
-            var result = await _userManager.CreateAsync(user, request.Password);
-            if (!result.Succeeded)
-                throw new InvalidOperationException(string.Join("; ", result.Errors.Select(e => e.Description)));
+            var createResult = await _userManager.CreateAsync(newUser, registrationRequest.Password);
 
-            await EnsureRolesExist();
-            await _userManager.AddToRoleAsync(user, SD.RoleUSER);
-
-            var sessionToken = await _sessionService.GenerateSessionTokenAsync(user);
-
-            return new SessionDto
+            if (!createResult.Succeeded)
             {
-                SessionToken = sessionToken,
-                User = _mapper.Map<UserDto>(user)
-            };
-        }
-
-        public async Task<IEnumerable<UserDto>> GetUsersAsync(string? organisationUniqueName = null)
-        {
-            var usersQuery = _db.Users.AsQueryable();
-
-            if (!string.IsNullOrWhiteSpace(organisationUniqueName))
-            {
-                usersQuery = usersQuery
-                    .Where(u => _db.OrganisationMemberships
-                        .Any(m => m.UserId == u.Id && m.Organisation.UniqueName == organisationUniqueName));
+                throw new InvalidOperationException(string.Join("; ", createResult.Errors.Select(e => e.Description)));
             }
 
-            var users = await usersQuery.ToListAsync();
-            return _mapper.Map<IEnumerable<UserDto>>(users);
+            await _userManager.AddToRoleAsync(newUser, SD.RoleUSER); // Always assign basic role
+
+            var token = await _sessionService.GenerateSessionTokenAsync(newUser);
+
+            return new SessionDto
+            {
+                SessionToken = token,
+                User = _mapper.Map<UserDto>(newUser),
+                Organisations = new List<OrganisationMembershipDto>()
+            };
         }
+
+
 
         public async Task<UserDto> GetUserAsync(string username)
         {
-            var user = await _userManager.FindByNameAsync(username)
-                ?? throw new InvalidOperationException("User not found.");
+            var user = await _userManager.Users.FirstOrDefaultAsync(u => u.UserName == username)
+                ?? throw new Exception("User not found");
 
             return _mapper.Map<UserDto>(user);
         }
 
-        private async Task EnsureRolesExist()
+        public async Task<IEnumerable<UserDto>> GetUsersAsync()
         {
-            if (!await _roleManager.RoleExistsAsync(SD.RoleADMIN))
-                await _roleManager.CreateAsync(new IdentityRole(SD.RoleADMIN));
+            var users = await _userManager.Users.ToListAsync();
+            return _mapper.Map<List<UserDto>>(users);
+        }
 
-            if (!await _roleManager.RoleExistsAsync(SD.RoleUSER))
-                await _roleManager.CreateAsync(new IdentityRole(SD.RoleUSER));
+        public async Task<bool> IsUserUniqueAsync(string username)
+        {
+            return !await _userManager.Users.AnyAsync(u => u.UserName == username);
+        }
+
+        private Task<string> GenerateSessionTokenAsync(ApplicationUser user)
+        {
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_apiSettings.SecretKey));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.Id ?? string.Empty),
+                new Claim(ClaimTypes.Name, user.UserName ?? string.Empty)
+            };
+
+            var token = new JwtSecurityToken(
+                issuer: _apiSettings.Issuer,
+                audience: _apiSettings.Audience,
+                claims: claims,
+                expires: DateTime.UtcNow.AddHours(2),
+                signingCredentials: creds
+            );
+
+            return Task.FromResult(new JwtSecurityTokenHandler().WriteToken(token));
+        }
+        public async Task<ApplicationUser> GetUserEntityByIdAsync(string id)
+        {
+            var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Id == id)
+                ?? throw new Exception("User not found");
+
+            return user;
         }
     }
 }
