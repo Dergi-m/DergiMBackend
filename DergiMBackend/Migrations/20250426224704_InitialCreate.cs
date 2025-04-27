@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace DergiMBackend.Migrations
 {
     /// <inheritdoc />
-    public partial class Init : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -26,17 +26,32 @@ namespace DergiMBackend.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Organisation",
+                name: "Organisations",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UniqueName = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Organisations", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Projects",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Description = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                    Description = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    OrganisationId = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Organisation", x => x.Id);
+                    table.PrimaryKey("PK_Projects", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -61,12 +76,35 @@ namespace DergiMBackend.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "OrganisationRoles",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    CanAssignTasks = table.Column<bool>(type: "bit", nullable: false),
+                    CanCreateTasks = table.Column<bool>(type: "bit", nullable: false),
+                    VisibleTags = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    OrganisationId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_OrganisationRoles", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_OrganisationRoles_Organisations_OrganisationId",
+                        column: x => x.OrganisationId,
+                        principalTable: "Organisations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "AspNetUsers",
                 columns: table => new
                 {
                     Id = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    OrganisationId = table.Column<int>(type: "int", nullable: false),
+                    ProjectId = table.Column<int>(type: "int", nullable: true),
                     UserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     NormalizedUserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     Email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
@@ -86,32 +124,31 @@ namespace DergiMBackend.Migrations
                 {
                     table.PrimaryKey("PK_AspNetUsers", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_AspNetUsers_Organisation_OrganisationId",
-                        column: x => x.OrganisationId,
-                        principalTable: "Organisation",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        name: "FK_AspNetUsers_Projects_ProjectId",
+                        column: x => x.ProjectId,
+                        principalTable: "Projects",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
-                name: "Projects",
+                name: "ProjectFiles",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Description = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    OrganisationId = table.Column<int>(type: "int", nullable: false)
+                    FileUrl = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    LocalFileUrl = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ProjectId = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Projects", x => x.Id);
+                    table.PrimaryKey("PK_ProjectFiles", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Projects_Organisation_OrganisationId",
-                        column: x => x.OrganisationId,
-                        principalTable: "Organisation",
+                        name: "FK_ProjectFiles_Projects_ProjectId",
+                        column: x => x.ProjectId,
+                        principalTable: "Projects",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.NoAction);
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -200,33 +237,36 @@ namespace DergiMBackend.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "ApplicationUserProject",
+                name: "OrganisationMemberships",
                 columns: table => new
                 {
-                    ProjectsId = table.Column<int>(type: "int", nullable: false),
-                    UsersId = table.Column<string>(type: "nvarchar(450)", nullable: false)
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    OrganisationId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    RoleId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_ApplicationUserProject", x => new { x.ProjectsId, x.UsersId });
+                    table.PrimaryKey("PK_OrganisationMemberships", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_ApplicationUserProject_AspNetUsers_UsersId",
-                        column: x => x.UsersId,
+                        name: "FK_OrganisationMemberships_AspNetUsers_UserId",
+                        column: x => x.UserId,
                         principalTable: "AspNetUsers",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_ApplicationUserProject_Projects_ProjectsId",
-                        column: x => x.ProjectsId,
-                        principalTable: "Projects",
+                        name: "FK_OrganisationMemberships_OrganisationRoles_RoleId",
+                        column: x => x.RoleId,
+                        principalTable: "OrganisationRoles",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_OrganisationMemberships_Organisations_OrganisationId",
+                        column: x => x.OrganisationId,
+                        principalTable: "Organisations",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ApplicationUserProject_UsersId",
-                table: "ApplicationUserProject",
-                column: "UsersId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetRoleClaims_RoleId",
@@ -261,9 +301,9 @@ namespace DergiMBackend.Migrations
                 column: "NormalizedEmail");
 
             migrationBuilder.CreateIndex(
-                name: "IX_AspNetUsers_OrganisationId",
+                name: "IX_AspNetUsers_ProjectId",
                 table: "AspNetUsers",
-                column: "OrganisationId");
+                column: "ProjectId");
 
             migrationBuilder.CreateIndex(
                 name: "UserNameIndex",
@@ -273,17 +313,34 @@ namespace DergiMBackend.Migrations
                 filter: "[NormalizedUserName] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Projects_OrganisationId",
-                table: "Projects",
+                name: "IX_OrganisationMemberships_OrganisationId",
+                table: "OrganisationMemberships",
                 column: "OrganisationId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_OrganisationMemberships_RoleId",
+                table: "OrganisationMemberships",
+                column: "RoleId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_OrganisationMemberships_UserId",
+                table: "OrganisationMemberships",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_OrganisationRoles_OrganisationId",
+                table: "OrganisationRoles",
+                column: "OrganisationId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ProjectFiles_ProjectId",
+                table: "ProjectFiles",
+                column: "ProjectId");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "ApplicationUserProject");
-
             migrationBuilder.DropTable(
                 name: "AspNetRoleClaims");
 
@@ -300,7 +357,10 @@ namespace DergiMBackend.Migrations
                 name: "AspNetUserTokens");
 
             migrationBuilder.DropTable(
-                name: "Projects");
+                name: "OrganisationMemberships");
+
+            migrationBuilder.DropTable(
+                name: "ProjectFiles");
 
             migrationBuilder.DropTable(
                 name: "AspNetRoles");
@@ -309,7 +369,13 @@ namespace DergiMBackend.Migrations
                 name: "AspNetUsers");
 
             migrationBuilder.DropTable(
-                name: "Organisation");
+                name: "OrganisationRoles");
+
+            migrationBuilder.DropTable(
+                name: "Projects");
+
+            migrationBuilder.DropTable(
+                name: "Organisations");
         }
     }
 }

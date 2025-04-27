@@ -4,17 +4,45 @@ using DergiMBackend.Models.Dtos;
 
 namespace DergiMBackend
 {
-	public class MapperConfig
-	{
-		public static MapperConfiguration RegisterMaps()
-		{
-			var mapping = new MapperConfiguration(config =>
-			{
-				config.CreateMap<Project, ProjectDto>().ReverseMap();
-				config.CreateMap<Organisation, OrganisationDto>().ReverseMap();
-				config.CreateMap<ProjectFile, ProjectFileDto>().ReverseMap();
-			});
-			return mapping;
-		}
-	}
+    public static class MapperConfig
+    {
+        public static MapperConfiguration RegisterMaps()
+        {
+            var mappingConfig = new MapperConfiguration(config =>
+            {
+                // --- User mappings ---
+                config.CreateMap<ApplicationUser, UserDto>()
+                    .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
+                    .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.Name))
+                    .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.UserName))
+                    .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Email))
+                    .ForMember(dest => dest.Age, opt => opt.MapFrom(src => src.Age))
+                    .ForMember(dest => dest.Gender, opt => opt.MapFrom(src => src.Gender));
+
+
+                // --- Organisation mappings ---
+                config.CreateMap<Organisation, OrganisationDto>()
+                    .ReverseMap();
+
+                // --- Organisation Role mappings ---
+                config.CreateMap<OrganisationRole, OrganisationRoleDto>()
+                    .ReverseMap();
+
+                config.CreateMap<OrganisationRole, CreateOrganisationRoleDto>()
+                    .ReverseMap();
+
+                config.CreateMap<OrganisationRole, UpdateOrganisationRoleDto>()
+                    .ReverseMap();
+
+                // --- Membership mappings ---
+                config.CreateMap<OrganisationMembership, CreateMembershipDto>()
+                    .ReverseMap();
+
+                config.CreateMap<OrganisationMembership, OrganisationMembershipDto>()
+                    .ReverseMap();
+            });
+
+            return mappingConfig;
+        }
+    }
 }

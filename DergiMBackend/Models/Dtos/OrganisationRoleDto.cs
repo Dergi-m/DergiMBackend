@@ -1,0 +1,13 @@
+﻿namespace DergiMBackend.Models.Dtos
+{
+    public class OrganisationRoleDto
+    {
+        public Guid Id { get; set; }
+        public Guid OrganisationId { get; set; }
+        public required string Name { get; set; }
+        public string? Description { get; set; }
+        public bool CanAssignTasks { get; set; }
+        public bool CanCreateTasks { get; set; }
+        public List<string> VisibleTags { get; set; } = new();
+    }
+}

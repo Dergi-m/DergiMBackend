@@ -1,21 +1,23 @@
-﻿using System.Security.Claims;
+﻿using DergiMBackend.Models;
+using System.Security.Claims;
 
-namespace DergiMBackend.Services.IServices;
-
-public interface ISessionService
+namespace DergiMBackend.Services.IServices
 {
-    /// <summary>
-    /// Generates a secure session token based on user and organization.
-    /// </summary>
-    /// <param name="username">The username associated with the session.</param>
-    /// <param name="organisation">The organisation the user belongs to.</param>
-    /// <returns>JWT-like session token string.</returns>
-    string GenerateSessionToken(string username, string organisation);
+    public interface ISessionService
+    {
+        /// <summary>
+        /// Generates a secure JWT session token for the given user.
+        /// </summary>
+        /// <param name="user">ApplicationUser entity</param>
+        /// <returns>Generated JWT session token as string</returns>
+        Task<string> GenerateSessionTokenAsync(ApplicationUser user);
 
-    /// <summary>
-    /// Validates a session token and returns the role claim.
-    /// </summary>
-    /// <param name="sessionToken">The session token to validate.</param>
-    /// <returns>The user's role claim from the token.</returns>
-    string ValidateSessionToken(string sessionToken);
+        /// <summary>
+        /// Validates an existing JWT session token.
+        /// </summary>
+        /// <param name="token">JWT session token</param>
+        /// <returns>ClaimsPrincipal if valid, or throws if invalid</returns>
+        Task<ClaimsPrincipal> ValidateSessionTokenAsync(string sessionToken);
+
+    }
 }

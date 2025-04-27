@@ -5,6 +5,7 @@ public class UserRole
 {
     public required Guid Id { get; set; } = Guid.NewGuid();
     public required string OrganisationUniqueName { get; set; } = default!;
+    
     public string Name { get; set; } = default!;
     public List<string> VisibleTags { get; set; } = new();
     public bool CanAssignTasks { get; set; }
