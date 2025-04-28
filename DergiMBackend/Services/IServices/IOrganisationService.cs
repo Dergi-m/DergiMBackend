@@ -8,7 +8,7 @@ namespace DergiMBackend.Services.IServices
         Task<Organisation?> GetOrganisationByIdAsync(Guid id);
         Task<Organisation?> GetOrganisationByUniqueNameAsync(string uniqueName);
         Task<Organisation> CreateOrganisationAsync(string uniqueName, string name, string? description, ApplicationUser owner);
-        Task<Organisation?> UpdateOrganisationAsync(Guid organisationId, string? name, string? description); // 💥 Fixed
+        Task<Organisation?> UpdateOrganisationAsync(Guid organisationId, string? name, string? description);
         Task<bool> DeleteOrganisationAsync(Guid id);
     }
 }
