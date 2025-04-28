@@ -1,262 +1,135 @@
-﻿using AutoMapper;
-using DergiMBackend.DbContext;
-using DergiMBackend.Models;
+﻿using DergiMBackend.Authorization;
 using DergiMBackend.Models.Dtos;
 using DergiMBackend.Services.IServices;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 
 namespace DergiMBackend.Controllers
 {
-	[Route("api/projects")]
-	[Authorize]
-	[ApiController]
-	public class ProjectController : ControllerBase
-	{
-		//private readonly ApplicationDbContext _db;
-		//private readonly IMapper _mapper;
-		//private readonly IConfiguration _configuration;
-		//private readonly ISessionService _tokenService;
-		//private ResponseDto _responceDto;
+    [ApiController]
+    [Route("api/projects")]
+    public class ProjectController : ControllerBase
+    {
+        private readonly IProjectService _projectService;
 
-		//public ProjectController(ApplicationDbContext db, IMapper mapper, IConfiguration configuration, ISessionService tokenService)
-		//{
-		//	_db = db;
-		//	_mapper = mapper;
-		//	_responceDto = new ResponseDto();
-		//	_configuration = configuration;
-		//	_tokenService = tokenService;
-		//}
+        public ProjectController(IProjectService projectService)
+        {
+            _projectService = projectService;
+        }
 
-		//private void ValidateRegisteredUser()
-		//{
-		//	var sessionToken = Request.Headers["SessionToken"].ToString();
-		//	if (string.IsNullOrEmpty(sessionToken))
-		//	{
-		//		throw new UnauthorizedAccessException("SessionToken is required.");
-		//	}
+        [HttpGet("{id:guid}")]
+        [SessionAuthorize]
+        public async Task<IActionResult> GetProject(Guid id)
+        {
+            var project = await _projectService.GetProjectByIdAsync(id);
+            if (project == null)
+                return NotFound();
 
-		//	_tokenService.ValidateSessionToken(sessionToken);
-		//}
+            return Ok(project);
+        }
 
-		//private void ValidateAdminRole()
-		//{
-		//	var sessionToken = Request.Headers["SessionToken"].ToString();
-		//	if (string.IsNullOrEmpty(sessionToken))
-		//	{
-		//		throw new UnauthorizedAccessException("SessionToken is required.");
-		//	}
+        [HttpGet("organisation/{organisationId:guid}")]
+        [SessionAuthorize]
+        public async Task<IActionResult> GetProjectsForOrganisation(Guid organisationId)
+        {
+            var projects = await _projectService.GetProjectsForOrganisationAsync(organisationId);
+            return Ok(projects);
+        }
 
-		//	var role = _tokenService.ValidateSessionToken(sessionToken);
-		//	if (role != SD.RoleADMIN)
-		//	{
-		//		throw new UnauthorizedAccessException("You do not have the required ADMIN role.");
-		//	}
-		//}
+        [HttpPost]
+        [SessionAuthorize]
+        public async Task<IActionResult> CreateProject([FromBody] CreateProjectDto createDto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
 
-		//[HttpGet("{organisationId:int?}")]
-		//public async Task<ResponseDto> Get(int? organisationId = null)
-		//{
-		//	try
-		//	{
-		//		ValidateRegisteredUser();
-		//		List<Project> projects = await _db.Projects.Include("ProjectFiles").ToListAsync();
-				
-		//		if (organisationId != null)
-		//		{
-		//			projects = projects.Where(u=> u.OrganisationId == organisationId).ToList();
-		//		}
+            var project = await _projectService.CreateProjectAsync(createDto);
+            var created = await _projectService.GetProjectByIdAsync(project.Id) ?? throw new Exception("Something went wrong please try again later");
+            return Ok(created);
+        }
 
-		//		_responceDto.Success = true;
-		//		_responceDto.Result = _mapper.Map<List<ProjectDto>>(projects);
-		//		_responceDto.StatusCode = System.Net.HttpStatusCode.OK;
-		//	}
-		//	catch (Exception ex)
-		//	{
-		//		_responceDto.Success = false;
-		//		_responceDto.Message = ex.Message;
-		//	}
-		//	return _responceDto;
-		//}
+        [HttpPut]
+        [SessionAuthorize]
+        public async Task<IActionResult> UpdateProject([FromBody] UpdateProjectDto updateDto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
 
-		//[HttpGet("getProject/{projectId:int}")]
-		//public async Task<ResponseDto> Get(int projectId)
-		//{
-		//	try
-		//	{
-		//		ValidateRegisteredUser();
-		//		var project  = await _db.Projects.Include("ProjectFiles").FirstOrDefaultAsync(u => u.Id == projectId);
+            var updatedProject = await _projectService.UpdateProjectAsync(updateDto);
 
-		//		_responceDto.Success = true;
-		//		_responceDto.Result = _mapper.Map<ProjectDto>(project);
-		//		_responceDto.StatusCode = System.Net.HttpStatusCode.OK;
-		//	}
-		//	catch (Exception ex)
-		//	{
-		//		_responceDto.Success = false;
-		//		_responceDto.Message = ex.Message;
-		//	}
-		//	return _responceDto;
-		//}
+            if (updatedProject == null)
+                return NotFound(new { message = "Project not found" });
 
-		//[HttpPost]
-		//public async Task<ResponseDto> Create(ProjectDto projectDto)
-		//{
-		//	try
-		//	{
-		//		ValidateRegisteredUser();
-		//		var project = _mapper.Map<Project>(projectDto);
+            return Ok(updatedProject);
+        }
 
-		//		await _db.Projects.AddAsync(project);
-		//		await _db.SaveChangesAsync();
 
-		//		_responceDto.Success = true;
-		//		_responceDto.Result = _mapper.Map<ProjectDto>(project);
-		//		_responceDto.StatusCode = System.Net.HttpStatusCode.OK;
-		//	}
-		//	catch (Exception ex)
-		//	{
-		//		_responceDto.Success = false;
-		//		_responceDto.Message = ex.Message;
-		//	}
-		//	return _responceDto;
-		//}
+        [HttpDelete("{id:guid}")]
+        [SessionAuthorize]
+        public async Task<IActionResult> DeleteProject(Guid id)
+        {
+            var deleted = await _projectService.DeleteProjectAsync(id);
+            if (!deleted)
+                return NotFound();
 
-		//[HttpPut]
-		//public async Task<ResponseDto> Update(ProjectDto projectDto)
-		//{
-		//	try
-		//	{
-		//		ValidateAdminRole();
-		//		var project = await _db.Projects.FirstOrDefaultAsync(u => u.Id == projectDto.Id);
+            return Ok(deleted);
+        }
 
-		//		project.Description = projectDto.Description;
-		//		project.Name = projectDto.Name;
+        [HttpPut("{projectId:guid}/add-members")]
+        [SessionAuthorize]
+        public async Task<IActionResult> AddUsersToProject(Guid projectId, [FromBody] List<string> userIds)
+        {
+            if (userIds == null || !userIds.Any())
+            {
+                return BadRequest("User IDs must be provided.");
+            }
 
-		//		_db.Projects.Update(project);
-		//		await _db.SaveChangesAsync();
+            await _projectService.AddUsersToProjectAsync(projectId, userIds);
 
-		//		_responceDto.Success = true;
-		//		_responceDto.Result = _mapper.Map<ProjectDto>(project);
-		//		_responceDto.StatusCode = System.Net.HttpStatusCode.OK;
-		//	}
-		//	catch (Exception ex)
-		//	{
-		//		_responceDto.Success = false;
-		//		_responceDto.Message = ex.Message;
-		//	}
-		//	return _responceDto;
-		//}
+            var project = await _projectService.GetProjectByIdAsync(projectId);
 
-		//[Authorize(Roles = SD.RoleADMIN)]
-		//[HttpDelete("{id:int}")]
-		//public async Task<ResponseDto> Delete(int id)
-		//{
-		//	try
-		//	{
-		//		ValidateAdminRole();
-		//		var project = await _db.Projects.FirstOrDefaultAsync(u => u.Id == id);
+            if (project == null)
+                return NotFound(new { message = "Project not found" });
 
-		//		_db.Projects.Remove(project);
-		//		await _db.SaveChangesAsync();
+            var updatedMembers = project.Members.Select(m => new UserDto
+            {
+                Id = m.Id,
+                Name = m.Name,
+                UserName = m.UserName ?? "",
+                Email = m.Email ?? "",
+            }).ToList();
 
-		//		_responceDto.Success = true;
-		//		_responceDto.StatusCode = System.Net.HttpStatusCode.OK;
-		//	}
-		//	catch (Exception ex)
-		//	{
-		//		_responceDto.Success = false;
-		//		_responceDto.Message = ex.Message;
-		//	}
-		//	return _responceDto;
-		//}
+            return Ok(new { Success = true, Message = "Users added to added project successfully.", UpdatedMembers = updatedMembers });
+        }
 
-		//[HttpPost("addFile")]
-		//public async Task<ResponseDto> AddFile([FromForm]ProjectFileDto projectFileDto)
-		//{
-		//	try
-		//	{
-		//		ValidateRegisteredUser();
-		//		var extension = Path.GetExtension(projectFileDto.File.FileName);
-		//		if (!SD.EXTENSIONS.Any(x => x == extension))
-		//		{
-		//			throw new Exception("Unaccepted file format");
-		//		}
-		//		string guid = Guid.NewGuid().ToString();
-		//		string fileName = guid + Path.GetExtension(projectFileDto.File.FileName);
-		//		string filePath = @"wwwroot\files\" + projectFileDto.ProjectId + @"\" + fileName;
+        [HttpPut("{projectId:guid}/remove-members")]
+        [SessionAuthorize]
+        public async Task<IActionResult> RemoveUsersFromProject(Guid projectId, [FromBody] List<string> userIds)
+        {
+         
+            if (userIds == null || !userIds.Any())
+            {
+                return BadRequest("User IDs must be provided.");
+            }
 
-		//		var filePathDirectory = Path.Combine(Directory.GetCurrentDirectory(), filePath);
+            await _projectService.RemoveUsersFromProjectAsync(projectId, userIds);
 
-		//		var directoryPath = Path.GetDirectoryName(filePathDirectory);
+            var project = await _projectService.GetProjectByIdAsync(projectId);
 
-		//		var rootPath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "files"));
-		//		var resolvedPath = Path.GetFullPath(filePathDirectory);
+            if (project == null)
+                return NotFound(new { message = "Project not found" });
 
-		//		if (!resolvedPath.StartsWith(rootPath))
-		//		{
-		//			throw new UnauthorizedAccessException("Invalid file path.");
-		//		}
+            var updatedMembers = project.Members.Select(m => new UserDto
+            {
+                Id = m.Id,
+                Name = m.Name,
+                UserName = m.UserName ?? "",
+                Email = m.Email ?? "",
+            }).ToList();
 
-		//		if (!Directory.Exists(directoryPath))
-		//		{
-		//			Directory.CreateDirectory(directoryPath);
-		//		}
 
-		//		using (var fileStream = new FileStream(filePathDirectory, FileMode.Create))
-		//		{
-		//			projectFileDto.File.CopyTo(fileStream);
+            return Ok(new { Success = true, Message = "Users removed from the project successfully.", UpdatedMembers = updatedMembers });
+        }
 
-		//		}
-		//		var baseUrl = _configuration["ApiSettings:BaseUrl"];
-		//		ProjectFile projectFile = new()
-		//		{
-		//			FileUrl = $"{baseUrl}/files/{projectFileDto.ProjectId}/{fileName}",
-		//			LocalFileUrl = filePath,
-		//			ProjectId = projectFileDto.ProjectId
-		//		};
 
-		//		await _db.ProjectFiles.AddAsync(projectFile);
-		//		await _db.SaveChangesAsync();
-
-		//		_responceDto.Success = true;
-		//		_responceDto.StatusCode = System.Net.HttpStatusCode.OK;
-		//	}
-		//	catch (Exception ex)
-		//	{
-		//		_responceDto.Success = false;
-		//		_responceDto.Message = ex.Message;
-		//	}
-		//	return _responceDto;
-		//}
-
-		//[HttpDelete("deleteFile/{id:int}")]
-		//public async Task<ResponseDto> DeleteFile(int id)
-		//{
-		//	try
-		//	{
-		//		ValidateAdminRole();
-		//		var FileToDelete = await _db.ProjectFiles.FirstOrDefaultAsync(u => u.Id == id);
-
-		//		if (System.IO.File.Exists(FileToDelete?.LocalFileUrl))
-		//		{
-		//			System.IO.File.Delete(FileToDelete.LocalFileUrl);
-		//		}
-
-		//		_db.ProjectFiles.Remove(FileToDelete);
-		//		await _db.SaveChangesAsync();
-
-		//		_responceDto.Success = true;
-		//	}
-		//	catch (Exception ex)
-		//	{
-		//		_responceDto.Success = false;
-		//		_responceDto.Message = ex.Message;
-		//	}
-		//	return _responceDto;
-		//}
-	}
+    }
 }
