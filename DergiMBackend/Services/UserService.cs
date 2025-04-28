@@ -49,7 +49,7 @@ namespace DergiMBackend.Services
             {
                 SessionToken = sessionToken,
                 User = _mapper.Map<UserDto>(user),
-                Organisations = new List<OrganisationMembershipDto>() // Optional to populate
+                Organisations = new List<OrganisationMembershipDto>()
             };
         }
 

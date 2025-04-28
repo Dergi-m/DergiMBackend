@@ -58,7 +58,7 @@ builder.Services.Configure<Dictionary<string, ClientConfig>>(builder.Configurati
 builder.Services.Configure<ApiSettings>(builder.Configuration.GetSection("ApiSettings"));
 
 // --- Controllers ---
-builder.Services.AddControllers(); // <<<<<< 🔥 THIS WAS MISSING!
+builder.Services.AddControllers();
 
 // --- Authentication ---
 builder.Services.AddAuthentication(options =>
