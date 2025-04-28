@@ -74,8 +74,8 @@ namespace DergiMBackend.Migrations
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("bit");
 
-                    b.Property<int?>("ProjectId")
-                        .HasColumnType("int");
+                    b.Property<Guid?>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("nvarchar(max)");
@@ -191,52 +191,36 @@ namespace DergiMBackend.Migrations
 
             modelBuilder.Entity("DergiMBackend.Models.Project", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("uniqueidentifier");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Description")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
-                    b.Property<int>("OrganisationId")
+                    b.Property<Guid>("OrganisationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Status")
+                        .HasMaxLength(50)
                         .HasColumnType("int");
 
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("OrganisationId");
 
                     b.ToTable("Projects");
-                });
-
-            modelBuilder.Entity("DergiMBackend.Models.ProjectFile", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("FileUrl")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("LocalFileUrl")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("ProjectId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProjectId");
-
-                    b.ToTable("ProjectFiles");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -375,7 +359,7 @@ namespace DergiMBackend.Migrations
             modelBuilder.Entity("DergiMBackend.Models.ApplicationUser", b =>
                 {
                     b.HasOne("DergiMBackend.Models.Project", null)
-                        .WithMany("Users")
+                        .WithMany("Members")
                         .HasForeignKey("ProjectId");
                 });
 
@@ -426,15 +410,15 @@ namespace DergiMBackend.Migrations
                     b.Navigation("Organisation");
                 });
 
-            modelBuilder.Entity("DergiMBackend.Models.ProjectFile", b =>
+            modelBuilder.Entity("DergiMBackend.Models.Project", b =>
                 {
-                    b.HasOne("DergiMBackend.Models.Project", "Project")
-                        .WithMany("ProjectFiles")
-                        .HasForeignKey("ProjectId")
+                    b.HasOne("DergiMBackend.Models.Organisation", "Organisation")
+                        .WithMany()
+                        .HasForeignKey("OrganisationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Project");
+                    b.Navigation("Organisation");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -502,9 +486,7 @@ namespace DergiMBackend.Migrations
 
             modelBuilder.Entity("DergiMBackend.Models.Project", b =>
                 {
-                    b.Navigation("ProjectFiles");
-
-                    b.Navigation("Users");
+                    b.Navigation("Members");
                 });
 #pragma warning restore 612, 618
         }

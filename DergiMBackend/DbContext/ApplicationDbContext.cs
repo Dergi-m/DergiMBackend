@@ -9,12 +9,11 @@ namespace DergiMBackend.DbContext
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
         {
         }
+        public DbSet<Organisation> Organisations { get; set; } = default!;
+        public DbSet<OrganisationMembership> OrganisationMemberships { get; set; } = default!;
+        public DbSet<OrganisationRole> OrganisationRoles { get; set; } = default!;
+        public DbSet<Project> Projects { get; set; } = default!;
 
-        public DbSet<Organisation> Organisations { get; set; }
-        public DbSet<OrganisationRole> OrganisationRoles { get; set; }
-        public DbSet<OrganisationMembership> OrganisationMemberships { get; set; }
-        public DbSet<Project> Projects { get; set; }
-        public DbSet<ProjectFile> ProjectFiles { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
