@@ -6,7 +6,9 @@ using DergiMBackend.Models;
 using DergiMBackend.Services;
 using DergiMBackend.Services.IServices;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -58,7 +60,13 @@ builder.Services.Configure<Dictionary<string, ClientConfig>>(builder.Configurati
 builder.Services.Configure<ApiSettings>(builder.Configuration.GetSection("ApiSettings"));
 
 // --- Controllers ---
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+{
+    var policy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+    options.Filters.Add(new AuthorizeFilter(policy));
+});
 
 // --- Authentication ---
 builder.Services.AddAuthentication(options =>
@@ -88,13 +96,23 @@ builder.Services.AddAuthorization();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
+    // JWT Bearer token
     options.AddSecurityDefinition(JwtBearerDefaults.AuthenticationScheme, new OpenApiSecurityScheme
     {
         Name = "Authorization",
-        Description = "Enter 'Bearer {your token}'",
+        Description = "Enter 'Bearer {your JWT token}'",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.ApiKey,
         Scheme = JwtBearerDefaults.AuthenticationScheme
+    });
+
+    // SessionToken Header
+    options.AddSecurityDefinition("SessionToken", new OpenApiSecurityScheme
+    {
+        Name = "SessionToken",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Description = "Custom session token returned after login"
     });
 
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -108,10 +126,22 @@ builder.Services.AddSwaggerGen(options =>
                     Id = JwtBearerDefaults.AuthenticationScheme
                 }
             },
-            Array.Empty<string>()
+            new string[] {}
+        },
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "SessionToken"
+                }
+            },
+            new string[] {}
         }
     });
 });
+
 
 // --- AutoMapper ---
 IMapper mapper = MapperConfig.RegisterMaps().CreateMapper();
@@ -131,6 +161,7 @@ app.UseAuthorization();
 app.MapControllers();
 
 ApplyMigrations();
+await SeedRolesAsync(app.Services);
 app.Run();
 
 // --- Helper: Apply Pending Migrations ---
@@ -143,4 +174,21 @@ void ApplyMigrations()
         db.Database.Migrate();
     }
 }
+
+static async Task SeedRolesAsync(IServiceProvider services)
+{
+    using var scope = services.CreateScope();
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+
+    string[] roles = { "ADMIN", "USER" };
+
+    foreach (var role in roles)
+    {
+        if (!await roleManager.RoleExistsAsync(role))
+        {
+            await roleManager.CreateAsync(new IdentityRole(role));
+        }
+    }
+}
+
 

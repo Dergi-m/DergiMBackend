@@ -1,5 +1,6 @@
 ﻿using DergiMBackend.Models.Dtos;
 using DergiMBackend.Services.IServices;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DergiMBackend.Controllers;
@@ -25,6 +26,7 @@ public class AuthController(IAuthService authService) : ControllerBase
     /// <remarks>
     /// This endpoint expects the request body to be in <c>application/x-www-form-urlencoded</c> format.
     /// </remarks>
+    [AllowAnonymous]
     [HttpPost("Token")]
     public async Task<IActionResult> GetAccessToken([FromForm] TokenRequestDto request)
     {
