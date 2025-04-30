@@ -88,9 +88,9 @@ namespace DergiMBackend.Services
 
 
 
-        public async Task<UserDto> GetUserAsync(string username)
+        public async Task<UserDto> GetUserAsync(string uid)
         {
-            var user = await _userManager.Users.FirstOrDefaultAsync(u => u.UserName == username)
+            var user = await _userManager.Users.FirstOrDefaultAsync(u => u.Id == uid)
                 ?? throw new Exception("User not found");
 
             return _mapper.Map<UserDto>(user);
