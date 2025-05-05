@@ -34,7 +34,7 @@ namespace DergiMBackend.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegistrationRequestDto model)
         {
-            var isUnique = await _userService.IsUserUniqueAsync(model.UserName);
+            var isUnique = await _userService.IsUserUniqueAsync(model.UserName, model.Email);
             if (!isUnique)
                 return BadRequest(new { error = "Username already exists" });
 

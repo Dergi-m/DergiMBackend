@@ -20,6 +20,8 @@ public class Project
     public required string Name { get; set; }
 
     public string? Description { get; set; }
+    public string CreatorId { get; set; } = default!;
+    public ApplicationUser Creator { get; set; } = default!;
 
     [Required]
     public Guid OrganisationId { get; set; }
@@ -32,6 +34,7 @@ public class Project
     public ProjectStatus Status { get; set; } = ProjectStatus.Active;
 
     public List<ApplicationUser> Members { get; set; } = new();
+    public List<ProjectInvitation> Invitations { get; set; } = new List<ProjectInvitation>();
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

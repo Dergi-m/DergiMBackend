@@ -40,6 +40,15 @@ namespace DergiMBackend
 
                 config.CreateMap<OrganisationMembership, OrganisationMembershipDto>()
                     .ReverseMap();
+
+                config.CreateMap<ProjectInvitation, ProjectInvitationDto>()
+                    .ForMember(dest => dest.ProjectName, opt => opt.MapFrom(src => src.Project.Name))
+                    .ForMember(dest => dest.ProjectId, opt => opt.MapFrom(src => src.Project.Id.ToString()))
+                    .ForMember(dest => dest.SenderUserId, opt => opt.MapFrom(src => src.Project.CreatorId))
+                    .ForMember(dest => dest.SenderUserName, opt => opt.MapFrom(src => src.Project.Creator.UserName))
+                    .ForMember(dest => dest.TargetUserId, opt => opt.MapFrom(src => src.TargetUser.Id))
+                    .ForMember(dest => dest.TargetUserName, opt => opt.MapFrom(src => src.TargetUser.UserName));
+
             });
 
             return mappingConfig;
