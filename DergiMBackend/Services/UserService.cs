@@ -96,8 +96,6 @@ namespace DergiMBackend.Services
                 UserName = registrationRequest.UserName,
                 Email = registrationRequest.Email,
                 Name = registrationRequest.Name,
-                Age = registrationRequest.Age,
-                Gender = registrationRequest.Gender,
             };
 
             var createResult = await _userManager.CreateAsync(newUser, registrationRequest.Password);
