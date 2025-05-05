@@ -167,12 +167,15 @@ namespace DergiMBackend.Services
             var project = await _dbContext.Projects
                 .Include(p => p.Members)
                 .FirstOrDefaultAsync(p => p.Id == dto.ProjectId);
+
             if(project == null)
             {
                 throw new InvalidOperationException("Project not found.");
             }
+
             var targetUser = await _dbContext.Users
                 .FirstOrDefaultAsync(u => u.Id == dto.TargetUserId);
+
             if(targetUser == null)
             {
                 throw new KeyNotFoundException("Target user not found.");
@@ -186,11 +189,11 @@ namespace DergiMBackend.Services
             {
                 Id = Guid.NewGuid(),
                 ProjectId = dto.ProjectId,
-                TargetUserId = dto.TargetUserId,
-                SenderUserId = dto.SenderUserId,
                 Message = dto.Message,
                 Status = InvitationStatus.Pending,
                 CreatedAt = DateTime.UtcNow,
+                TargetUserId = dto.TargetUserId,
+                SenderUserId = dto.SenderUserId,
             };
 
             _dbContext.ProjectInvitations.Add(invitation);

@@ -51,7 +51,7 @@ namespace DergiMBackend.DbContext
             // Project
             modelBuilder.Entity<Project>()
                 .HasOne(p => p.Creator)
-                .WithMany() // You can add .WithMany(u => u.CreatedProjects) if needed
+                .WithMany()
                 .HasForeignKey(p => p.CreatorId)
                 .OnDelete(DeleteBehavior.Restrict);
 
