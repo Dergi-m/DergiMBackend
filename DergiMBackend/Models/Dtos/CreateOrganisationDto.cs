@@ -11,4 +11,5 @@ public class CreateOrganisationDto
     public string Name { get; set; } = default!;
 
     public string? Description { get; set; }
+    public Guid OwnerId { get; set; } = default!;
 }

@@ -55,8 +55,41 @@ namespace DergiMBackend.Services
 
         public async Task<SessionDto> RegisterAsync(RegistrationRequestDto registrationRequest)
         {
-            if (!await IsUserUniqueAsync(registrationRequest.UserName))
-                throw new InvalidOperationException("Username already exists.");
+            if (!await IsUserUniqueAsync(registrationRequest.UserName, registrationRequest.Email))
+                throw new InvalidOperationException("Username or email already exists.");
+
+            var organisation = await _db.Organisations.FirstOrDefaultAsync(o => o.UniqueName == "dergim");
+            if (organisation == null)
+            {
+                organisation = new Organisation
+                {
+                    UniqueName = "dergim",
+                    Name = "DergiM"
+                };
+                _db.Organisations.Add(organisation);
+                await _db.SaveChangesAsync();
+            }
+
+            if (organisation == null) throw new Exception("No organisation");
+
+            // Ensure "Member" role exists
+            var memberRole = await _db.OrganisationRoles.FirstOrDefaultAsync(r =>
+                r.OrganisationId == organisation.Id && r.Name == "Member");
+
+            if (memberRole == null)
+            {
+                memberRole = new OrganisationRole
+                {
+                    OrganisationId = organisation.Id,
+                    Name = "Member",
+                    Description = "Default member role"
+                };
+                _db.OrganisationRoles.Add(memberRole);
+                await _db.SaveChangesAsync();
+            }
+
+            if (memberRole == null) throw new Exception("No role");
+
 
             var newUser = new ApplicationUser
             {
@@ -74,7 +107,17 @@ namespace DergiMBackend.Services
                 throw new InvalidOperationException(string.Join("; ", createResult.Errors.Select(e => e.Description)));
             }
 
+            
             await _userManager.AddToRoleAsync(newUser, SD.RoleUSER); // Always assign basic role
+
+            _db.OrganisationMemberships.Add(new OrganisationMembership
+            {
+                OrganisationId = organisation.Id,
+                RoleId = memberRole.Id,
+                UserId = newUser.Id
+            });
+
+            await _db.SaveChangesAsync();
 
             var token = await _sessionService.GenerateSessionTokenAsync(newUser);
 
@@ -102,9 +145,9 @@ namespace DergiMBackend.Services
             return _mapper.Map<List<UserDto>>(users);
         }
 
-        public async Task<bool> IsUserUniqueAsync(string username)
+        public async Task<bool> IsUserUniqueAsync(string username, string email)
         {
-            return !await _userManager.Users.AnyAsync(u => u.UserName == username);
+            return !await _userManager.Users.AnyAsync(u => u.UserName == username || u.Email == email);
         }
 
         private Task<string> GenerateSessionTokenAsync(ApplicationUser user)

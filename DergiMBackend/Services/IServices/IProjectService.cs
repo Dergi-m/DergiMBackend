@@ -8,11 +8,13 @@ namespace DergiMBackend.Services.IServices
         Task<IEnumerable<Project>> GetAllProjectsAsync();
         Task<Project?> GetProjectByIdAsync(Guid projectId);
         Task<IEnumerable<Project>> GetProjectsForOrganisationAsync(Guid organisationId);
-        Task<Project> CreateProjectAsync(CreateProjectDto createDto);
+        Task<Project> CreateProjectAsync(CreateProjectDto createDto, string creatorId);
         Task<Project?> UpdateProjectAsync(UpdateProjectDto updateDto);
         Task<bool> DeleteProjectAsync(Guid projectId);
         Task AddUsersToProjectAsync(Guid projectId, List<string> userIds);
         Task RemoveUsersFromProjectAsync(Guid projectId, List<string> userIds);
+        Task<bool> InviteUserToProjectAsync(ProjectInvitationDto dto);
+
         Task SaveChangesAsync();
     }
 }

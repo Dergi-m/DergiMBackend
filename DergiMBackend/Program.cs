@@ -15,24 +15,24 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 
-var builder = WebApplication.CreateBuilder(args);
+var modelBuilder = WebApplication.CreateBuilder(args);
 
 // --- Validate Secrets ---
-SecretsValidator.Validate(builder.Configuration, builder.Environment);
+SecretsValidator.Validate(modelBuilder.Configuration, modelBuilder.Environment);
 
 // --- Database Configuration ---
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
+modelBuilder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    var env = builder.Environment;
+    var env = modelBuilder.Environment;
     if (env.IsDevelopment())
     {
         // Local SQL Server (username/password)
-        options.UseSqlServer(builder.Configuration["ConnectionStrings:DefaultSQLConnection"]);
+        options.UseSqlServer(modelBuilder.Configuration["ConnectionStrings:DefaultSQLConnection"]);
     }
     else
     {
         // Azure Production (Managed Identity)
-        var connection = new SqlConnection(builder.Configuration["AzureSql:ConnectionString"]);
+        var connection = new SqlConnection(modelBuilder.Configuration["AzureSql:ConnectionString"]);
         var credential = new DefaultAzureCredential();
         var token = credential.GetToken(new Azure.Core.TokenRequestContext(new[] { "https://database.windows.net/.default" }));
         connection.AccessToken = token.Token;
@@ -41,35 +41,40 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 });
 
 // --- Identity Configuration ---
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
+modelBuilder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
 // --- Services Registration ---
-builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<ISessionService, SessionService>();
-builder.Services.AddScoped<IOrganisationMembershipService, OrganisationMembershipService>();
-builder.Services.AddScoped<IOrganisationService, OrganisationService>();
-builder.Services.AddScoped<IOrganisationRoleService, OrganisationRoleService>();
+modelBuilder.Services.AddScoped<IUserService, UserService>();
+modelBuilder.Services.AddScoped<IAuthService, AuthService>();
+modelBuilder.Services.AddScoped<ISessionService, SessionService>();
+modelBuilder.Services.AddScoped<IOrganisationMembershipService, OrganisationMembershipService>();
+modelBuilder.Services.AddScoped<IOrganisationRoleService, OrganisationRoleService>();
+modelBuilder.Services.AddScoped<IOrganisationService, OrganisationService>();
+modelBuilder.Services.AddScoped<IProjectService, ProjectService>();
 
-builder.Services.AddHttpContextAccessor();
+modelBuilder.Services.AddHttpContextAccessor();
 
 // --- Configuration Bindings ---
-builder.Services.Configure<Dictionary<string, ClientConfig>>(builder.Configuration.GetSection("Clients"));
-builder.Services.Configure<ApiSettings>(builder.Configuration.GetSection("ApiSettings"));
+modelBuilder.Services.Configure<Dictionary<string, ClientConfig>>(modelBuilder.Configuration.GetSection("Clients"));
+modelBuilder.Services.Configure<ApiSettings>(modelBuilder.Configuration.GetSection("ApiSettings"));
 
 // --- Controllers ---
-builder.Services.AddControllers(options =>
+modelBuilder.Services.AddControllers(options =>
 {
     var policy = new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
         .Build();
     options.Filters.Add(new AuthorizeFilter(policy));
+}).AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve;
+    options.JsonSerializerOptions.WriteIndented = true;
 });
 
 // --- Authentication ---
-builder.Services.AddAuthentication(options =>
+modelBuilder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -82,19 +87,19 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = builder.Configuration["ApiSettings:Issuer"],
-        ValidAudience = builder.Configuration["ApiSettings:Audience"],
+        ValidIssuer = modelBuilder.Configuration["ApiSettings:Issuer"],
+        ValidAudience = modelBuilder.Configuration["ApiSettings:Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(builder.Configuration["ApiSettings:SecretKey"]!)
+            Encoding.UTF8.GetBytes(modelBuilder.Configuration["ApiSettings:SecretKey"]!)
         )
     };
 });
 
-builder.Services.AddAuthorization();
+modelBuilder.Services.AddAuthorization();
 
 // --- Swagger ---
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(options =>
+modelBuilder.Services.AddEndpointsApiExplorer();
+modelBuilder.Services.AddSwaggerGen(options =>
 {
     // JWT Bearer token
     options.AddSecurityDefinition(JwtBearerDefaults.AuthenticationScheme, new OpenApiSecurityScheme
@@ -145,11 +150,11 @@ builder.Services.AddSwaggerGen(options =>
 
 // --- AutoMapper ---
 IMapper mapper = MapperConfig.RegisterMaps().CreateMapper();
-builder.Services.AddSingleton(mapper);
-builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+modelBuilder.Services.AddSingleton(mapper);
+modelBuilder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
 // --- Build Application ---
-var app = builder.Build();
+var app = modelBuilder.Build();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();

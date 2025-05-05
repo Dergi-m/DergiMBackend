@@ -9,7 +9,7 @@ namespace DergiMBackend.Services.IServices
         Task<SessionDto> RegisterAsync(RegistrationRequestDto registrationRequestDto);
         Task<UserDto> GetUserAsync(string userId);
         Task<IEnumerable<UserDto>> GetUsersAsync();
-        Task<bool> IsUserUniqueAsync(string username);
+        Task<bool> IsUserUniqueAsync(string username, string email);
         Task<ApplicationUser> GetUserEntityByIdAsync(string id);
 
     }

@@ -2,6 +2,7 @@
 using DergiMBackend.Models;
 using DergiMBackend.Models.Dtos;
 using DergiMBackend.Services.IServices;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace DergiMBackend.Services
@@ -33,7 +34,7 @@ namespace DergiMBackend.Services
                                             .ToListAsync();
         }
 
-        public async Task<Project> CreateProjectAsync(CreateProjectDto createDto)
+        public async Task<Project> CreateProjectAsync(CreateProjectDto createDto, string creatorId)
         {
             var organisation = await _dbContext.Organisations
                 .FirstOrDefaultAsync(o => o.Id == createDto.OrganisationId)
@@ -49,6 +50,7 @@ namespace DergiMBackend.Services
             {
                 Id = Guid.NewGuid(),
                 OrganisationId = createDto.OrganisationId,
+                CreatorId = creatorId,
                 Name = createDto.Name,
                 Description = createDto.Description,
                 Status = ProjectStatus.Active,
@@ -86,6 +88,19 @@ namespace DergiMBackend.Services
             var project = await _dbContext.Projects.FirstOrDefaultAsync(p => p.Id == projectId);
             if (project == null) return false;
 
+            var userIds = project.Members.Select(u => u.Id).ToList();
+
+            foreach (var userId in userIds)
+            {
+                var user = _dbContext.Users.FirstOrDefault(u => u.Id == userId);
+
+                if(user != null)
+                {
+                    user.Projects.Remove(project);
+                    _dbContext.Users.Update(user);
+                }
+            }
+
             _dbContext.Projects.Remove(project);
             await _dbContext.SaveChangesAsync();
             return true;
@@ -107,11 +122,18 @@ namespace DergiMBackend.Services
             if (users.Count == 0)
                 throw new ArgumentException("No valid users found to add.");
 
+            
+
             foreach (var user in users)
             {
                 if (!project.Members.Contains(user))
                 {
                     project.Members.Add(user);
+                }
+
+                if (!user.Projects.Contains(project))
+                {
+                    user.Projects.Add(project);
                 }
             }
 
@@ -134,10 +156,48 @@ namespace DergiMBackend.Services
             if (users.Count == 0)
                 throw new ArgumentException("No valid users found to add.");
 
+            users.ForEach(u => u.Projects.All(p => p.Id != project.Id));
             project.Members.RemoveAll(u => userIds.Contains(u.Id));
 
             await _dbContext.SaveChangesAsync();
         }
+
+        public async Task<bool> InviteUserToProjectAsync(ProjectInvitationDto dto)
+        {
+            var project = await _dbContext.Projects
+                .Include(p => p.Members)
+                .FirstOrDefaultAsync(p => p.Id == dto.ProjectId);
+            if(project == null)
+            {
+                throw new InvalidOperationException("Project not found.");
+            }
+            var targetUser = await _dbContext.Users
+                .FirstOrDefaultAsync(u => u.Id == dto.TargetUserId);
+            if(targetUser == null)
+            {
+                throw new KeyNotFoundException("Target user not found.");
+            }
+
+            var alreadyMember = targetUser.Projects.Contains(project);
+
+            if(alreadyMember) throw new Exception("Already member of the project.");
+
+            var invitation = new ProjectInvitation
+            {
+                Id = Guid.NewGuid(),
+                ProjectId = dto.ProjectId,
+                TargetUserId = dto.TargetUserId,
+                SenderUserId = dto.SenderUserId,
+                Message = dto.Message,
+                Status = InvitationStatus.Pending,
+                CreatedAt = DateTime.UtcNow,
+            };
+
+            _dbContext.ProjectInvitations.Add(invitation);
+            await _dbContext.SaveChangesAsync();
+            return true;
+        }
+
 
 
         public async Task SaveChangesAsync()

@@ -22,6 +22,21 @@ namespace DergiMBackend.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("ApplicationUserProject", b =>
+                {
+                    b.Property<string>("MembersId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<Guid>("ProjectsId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("MembersId", "ProjectsId");
+
+                    b.HasIndex("ProjectsId");
+
+                    b.ToTable("ProjectUsers", (string)null);
+                });
+
             modelBuilder.Entity("DergiMBackend.Models.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
@@ -74,9 +89,6 @@ namespace DergiMBackend.Migrations
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("bit");
 
-                    b.Property<Guid?>("ProjectId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("nvarchar(max)");
 
@@ -96,8 +108,6 @@ namespace DergiMBackend.Migrations
                         .IsUnique()
                         .HasDatabaseName("UserNameIndex")
                         .HasFilter("[NormalizedUserName] IS NOT NULL");
-
-                    b.HasIndex("ProjectId");
 
                     b.ToTable("AspNetUsers", (string)null);
                 });
@@ -198,6 +208,10 @@ namespace DergiMBackend.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("CreatorId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
@@ -218,9 +232,49 @@ namespace DergiMBackend.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CreatorId");
+
                     b.HasIndex("OrganisationId");
 
                     b.ToTable("Projects");
+                });
+
+            modelBuilder.Entity("DergiMBackend.Models.ProjectInvitation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Message")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("SenderUserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TargetUserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId");
+
+                    b.HasIndex("SenderUserId");
+
+                    b.HasIndex("TargetUserId", "ProjectId")
+                        .IsUnique();
+
+                    b.ToTable("ProjectInvitations");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -356,11 +410,19 @@ namespace DergiMBackend.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("DergiMBackend.Models.ApplicationUser", b =>
+            modelBuilder.Entity("ApplicationUserProject", b =>
                 {
+                    b.HasOne("DergiMBackend.Models.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("MembersId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("DergiMBackend.Models.Project", null)
-                        .WithMany("Members")
-                        .HasForeignKey("ProjectId");
+                        .WithMany()
+                        .HasForeignKey("ProjectsId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("DergiMBackend.Models.Organisation", b =>
@@ -412,13 +474,48 @@ namespace DergiMBackend.Migrations
 
             modelBuilder.Entity("DergiMBackend.Models.Project", b =>
                 {
+                    b.HasOne("DergiMBackend.Models.ApplicationUser", "Creator")
+                        .WithMany()
+                        .HasForeignKey("CreatorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("DergiMBackend.Models.Organisation", "Organisation")
                         .WithMany()
                         .HasForeignKey("OrganisationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("Creator");
+
                     b.Navigation("Organisation");
+                });
+
+            modelBuilder.Entity("DergiMBackend.Models.ProjectInvitation", b =>
+                {
+                    b.HasOne("DergiMBackend.Models.Project", "Project")
+                        .WithMany("Invitations")
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DergiMBackend.Models.ApplicationUser", "SenderUser")
+                        .WithMany()
+                        .HasForeignKey("SenderUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DergiMBackend.Models.ApplicationUser", "TargetUser")
+                        .WithMany("ProjectInvitations")
+                        .HasForeignKey("TargetUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Project");
+
+                    b.Navigation("SenderUser");
+
+                    b.Navigation("TargetUser");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -475,6 +572,8 @@ namespace DergiMBackend.Migrations
             modelBuilder.Entity("DergiMBackend.Models.ApplicationUser", b =>
                 {
                     b.Navigation("OrganisationMemberships");
+
+                    b.Navigation("ProjectInvitations");
                 });
 
             modelBuilder.Entity("DergiMBackend.Models.Organisation", b =>
@@ -486,7 +585,7 @@ namespace DergiMBackend.Migrations
 
             modelBuilder.Entity("DergiMBackend.Models.Project", b =>
                 {
-                    b.Navigation("Members");
+                    b.Navigation("Invitations");
                 });
 #pragma warning restore 612, 618
         }

@@ -1,7 +1,10 @@
 ﻿using DergiMBackend.Authorization;
+using DergiMBackend.Models;
 using DergiMBackend.Models.Dtos;
+using DergiMBackend.Services;
 using DergiMBackend.Services.IServices;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace DergiMBackend.Controllers
 {
@@ -10,10 +13,12 @@ namespace DergiMBackend.Controllers
     public class ProjectController : ControllerBase
     {
         private readonly IProjectService _projectService;
+        private readonly ISessionService _sessionService;
 
-        public ProjectController(IProjectService projectService)
+        public ProjectController(IProjectService projectService, ISessionService sessionService)
         {
             _projectService = projectService;
+            _sessionService = sessionService;
         }
 
         [HttpGet("{id:guid}")]
@@ -39,10 +44,20 @@ namespace DergiMBackend.Controllers
         [SessionAuthorize]
         public async Task<IActionResult> CreateProject([FromBody] CreateProjectDto createDto)
         {
+            var token = HttpContext.Request.Headers["SessionToken"].FirstOrDefault();
+
+
+            if (token == null) throw new UnauthorizedAccessException("Session token is missing");
+
+            var sessionUser = await _sessionService.ValidateSessionTokenAsync(token);
+            var currentUserId = sessionUser.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (currentUserId == null) throw new UnauthorizedAccessException("User not found.");
+
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var project = await _projectService.CreateProjectAsync(createDto);
+            var project = await _projectService.CreateProjectAsync(createDto, currentUserId);
             var created = await _projectService.GetProjectByIdAsync(project.Id) ?? throw new Exception("Something went wrong please try again later");
             return Ok(created);
         }
@@ -51,13 +66,24 @@ namespace DergiMBackend.Controllers
         [SessionAuthorize]
         public async Task<IActionResult> UpdateProject([FromBody] UpdateProjectDto updateDto)
         {
+            var token = HttpContext.Request.Headers["SessionToken"].FirstOrDefault();
+            
+            if(token == null) throw new UnauthorizedAccessException("Session token is missing");
+            
+
+            var sessionUser = await _sessionService.ValidateSessionTokenAsync(token);
+            var currentUserId = sessionUser.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var updatedProject = await _projectService.UpdateProjectAsync(updateDto);
+            var project = await _projectService.GetProjectByIdAsync(updateDto.Id);
 
-            if (updatedProject == null)
-                return NotFound(new { message = "Project not found" });
+            if(project == null) return NotFound(new { message = "Project not found" });
+            
+            if (project.CreatorId != currentUserId) return Unauthorized();
+
+            var updatedProject = await _projectService.UpdateProjectAsync(updateDto);
 
             return Ok(updatedProject);
         }
@@ -83,12 +109,22 @@ namespace DergiMBackend.Controllers
                 return BadRequest("User IDs must be provided.");
             }
 
-            await _projectService.AddUsersToProjectAsync(projectId, userIds);
+            var token = HttpContext.Request.Headers["SessionToken"].FirstOrDefault();
+
+            if (token == null) throw new UnauthorizedAccessException("Session token is missing");
+
+
+            var sessionUser = await _sessionService.ValidateSessionTokenAsync(token);
+            var currentUserId = sessionUser.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             var project = await _projectService.GetProjectByIdAsync(projectId);
 
             if (project == null)
                 return NotFound(new { message = "Project not found" });
+
+            if (project.CreatorId != currentUserId) return Unauthorized();
+
+            await _projectService.AddUsersToProjectAsync(projectId, userIds);
 
             var updatedMembers = project.Members.Select(m => new UserDto
             {
@@ -111,12 +147,26 @@ namespace DergiMBackend.Controllers
                 return BadRequest("User IDs must be provided.");
             }
 
-            await _projectService.RemoveUsersFromProjectAsync(projectId, userIds);
+
+
+            var token = HttpContext.Request.Headers["SessionToken"].FirstOrDefault();
+
+            if (token == null) throw new UnauthorizedAccessException("Session token is missing");
+
+
+            var sessionUser = await _sessionService.ValidateSessionTokenAsync(token);
+            var currentUserId = sessionUser.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             var project = await _projectService.GetProjectByIdAsync(projectId);
 
             if (project == null)
                 return NotFound(new { message = "Project not found" });
+
+            if (project.CreatorId != currentUserId) return Unauthorized();
+
+
+            await _projectService.RemoveUsersFromProjectAsync(projectId, userIds);
+
 
             var updatedMembers = project.Members.Select(m => new UserDto
             {
@@ -130,6 +180,30 @@ namespace DergiMBackend.Controllers
             return Ok(new { Success = true, Message = "Users removed from the project successfully.", UpdatedMembers = updatedMembers });
         }
 
+        [HttpPost("invite")]
+        [SessionAuthorize]
+        public async Task<IActionResult> InviteUserToProject([FromBody] ProjectInvitationDto dto)
+        {
+            try
+            {
+                var result = await _projectService.InviteUserToProjectAsync(dto);
+
+                if (!result)
+                    return BadRequest(new { Success = false, Message = "Failed to create invitation.", StatusCode = 400 });
+
+                return Ok(new { Success = true, Message = "Invitation sent successfully." });
+
+            } catch(Exception ex)
+            {
+                if(ex.GetType() == typeof(KeyNotFoundException))
+                {
+                    return NotFound(new { Success = false, Message = ex.Message, StatusCode = 404 });
+                }
+
+                return BadRequest(new { Success = false, Message = ex.Message, StatusCode = 400 });
+            }
+            
+        }
 
     }
 }

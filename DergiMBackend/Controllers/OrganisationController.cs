@@ -48,12 +48,7 @@ namespace DergiMBackend.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var userId = HttpContext.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-
-            if (string.IsNullOrEmpty(userId))
-                return Unauthorized();
-
-            var user = await _userService.GetUserEntityByIdAsync(userId);
+            var user = await _userService.GetUserEntityByIdAsync(dto.OwnerId.ToString());
             if (user == null)
                 return Unauthorized();
 
