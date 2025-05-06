@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace DergiMBackend.Models
 {
@@ -18,6 +19,9 @@ namespace DergiMBackend.Models
         public Guid ProjectId { get; set; }
 
         public Project Project { get; set; } = default!;
+
+        [JsonIgnore]
+        public ICollection<ProjectTask>? ProjectTasks { get; set; } = new List<ProjectTask>();
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

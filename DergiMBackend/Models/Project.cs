@@ -36,6 +36,7 @@ public class Project
     public List<ApplicationUser> Members { get; set; } = new();
     public List<ProjectInvitation> Invitations { get; set; } = new List<ProjectInvitation>();
     public List<ProjectFile> Files { get; set; } = new List<ProjectFile>();
+    public List<ProjectTask> Tasks { get; set; } = new List<ProjectTask>();
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
