@@ -13,6 +13,7 @@ namespace DergiMBackend.DbContext
         public DbSet<OrganisationMembership> OrganisationMemberships { get; set; } = default!;
         public DbSet<OrganisationRole> OrganisationRoles { get; set; } = default!;
         public DbSet<Project> Projects { get; set; } = default!;
+        public DbSet<ProjectFile> ProjectFiles { get; set; } = default!;
         public DbSet<ProjectInvitation> ProjectInvitations { get; set; }
 
 
@@ -84,6 +85,13 @@ namespace DergiMBackend.DbContext
                 .HasMany(p => p.Members)
                 .WithMany(u => u.Projects)
                 .UsingEntity(j => j.ToTable("ProjectUsers"));
+
+            modelBuilder.Entity<Project>()
+                .HasMany(p => p.Files)
+                .WithOne(f => f.Project)
+                .HasForeignKey(f => f.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+
         }
     }
 }

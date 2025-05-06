@@ -53,6 +53,7 @@ modelBuilder.Services.AddScoped<IOrganisationMembershipService, OrganisationMemb
 modelBuilder.Services.AddScoped<IOrganisationRoleService, OrganisationRoleService>();
 modelBuilder.Services.AddScoped<IOrganisationService, OrganisationService>();
 modelBuilder.Services.AddScoped<IProjectService, ProjectService>();
+modelBuilder.Services.AddScoped<IProjectFileService, ProjectFileService>();
 
 modelBuilder.Services.AddHttpContextAccessor();
 

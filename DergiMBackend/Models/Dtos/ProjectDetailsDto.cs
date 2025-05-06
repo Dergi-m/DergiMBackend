@@ -7,7 +7,7 @@
         public string? Description { get; set; }
         public ProjectStatus Status { get; set; }
         public Guid OrganisationId { get; set; }
-        public string CreatorId { get; set; }
+        public required string CreatorId { get; set; }
         public List<UserDto> Members { get; set; } = new();
         public List<ProjectInvitationDto> Invitations { get; set; } = new();
         public DateTime CreatedAt { get; set; }
