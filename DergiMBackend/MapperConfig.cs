@@ -43,6 +43,11 @@ namespace DergiMBackend
                     .ForMember(dest => dest.SenderUserId, opt => opt.MapFrom(src => src.SenderUserId))
                     .ForMember(dest => dest.TargetUserId, opt => opt.MapFrom(src => src.TargetUserId));
 
+                // --- Project File mappings ---
+                config.CreateMap<ProjectFile, ProjectFileDto>().ReverseMap();
+                config.CreateMap<ProjectFile, CreateProjectFileDto>().ReverseMap();
+
+
             });
 
             return mappingConfig;

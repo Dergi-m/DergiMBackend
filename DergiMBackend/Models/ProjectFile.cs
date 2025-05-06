@@ -1,14 +1,26 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DergiMBackend.Models
 {
-	public class ProjectFile
-	{
-		public int Id { get; set; }
-		public required string FileUrl { get; set; }
-		public required string LocalFileUrl { get; set; }
-		[ForeignKey(nameof(Project))]
-		public int ProjectId { get; set; }
-		public Project? Project { get; set; }
-	}
+    public class ProjectFile
+    {
+        [Key]
+        public Guid Id { get; set; } = Guid.NewGuid();
+
+        [Required]
+        public string FileUrl { get; set; } = default!;
+
+        [Required]
+        public string LocalFileUrl { get; set; } = default!;
+
+        [ForeignKey(nameof(Project))]
+        public Guid ProjectId { get; set; }
+
+        public Project Project { get; set; } = default!;
+
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    }
 }
