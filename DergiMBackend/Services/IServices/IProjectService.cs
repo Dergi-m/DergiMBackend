@@ -11,8 +11,9 @@ namespace DergiMBackend.Services.IServices
         Task<Project> CreateProjectAsync(CreateProjectDto createDto, string creatorId);
         Task<Project?> UpdateProjectAsync(UpdateProjectDto updateDto);
         Task<bool> DeleteProjectAsync(Guid projectId);
-        Task AddUsersToProjectAsync(Guid projectId, List<string> userIds);
-        Task RemoveUsersFromProjectAsync(Guid projectId, List<string> userIds);
+        Task AddUserToProjectWithInvitationAsync(string projectInvitationId);
+        Task RejcetProjectInvitation(string projectInvitationId);
+        Task RemoveUserFromProjectAsync(Guid projectId, string userIds);
         Task<bool> InviteUserToProjectAsync(ProjectInvitationDto dto);
 
         Task SaveChangesAsync();

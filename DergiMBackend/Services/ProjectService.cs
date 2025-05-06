@@ -24,6 +24,7 @@ namespace DergiMBackend.Services
         public async Task<Project?> GetProjectByIdAsync(Guid projectId)
         {
             return await _dbContext.Projects.Include(p => p.Members)
+                                            .Include(p => p.Invitations)
                                             .FirstOrDefaultAsync(p => p.Id == projectId);
         }
 
@@ -46,6 +47,13 @@ namespace DergiMBackend.Services
             if (existingProject != null)
                 throw new InvalidOperationException("A project with the same name already exists in this organisation.");
 
+            var creator = await _dbContext.Users
+                .Include(u => u.Projects)
+                .FirstOrDefaultAsync(u => u.Id == creatorId);
+
+            if (creator == null)
+                throw new InvalidOperationException("User not found.");
+
             var project = new Project
             {
                 Id = Guid.NewGuid(),
@@ -61,10 +69,15 @@ namespace DergiMBackend.Services
             _dbContext.Projects.Add(project);
             await _dbContext.SaveChangesAsync();
 
+            project.Members.Add(creator);
+            creator.Projects.Add(project);
+
+            _dbContext.Projects.Update(project);
+            _dbContext.Users.Update(creator);
+            await _dbContext.SaveChangesAsync();
+
             return project;
         }
-
-
 
         public async Task<Project?> UpdateProjectAsync(UpdateProjectDto dto)
         {
@@ -85,16 +98,19 @@ namespace DergiMBackend.Services
 
         public async Task<bool> DeleteProjectAsync(Guid projectId)
         {
-            var project = await _dbContext.Projects.FirstOrDefaultAsync(p => p.Id == projectId);
+            var project = await _dbContext.Projects
+                .Include(p => p.Members)
+                .FirstOrDefaultAsync(p => p.Id == projectId);
+
             if (project == null) return false;
 
             var userIds = project.Members.Select(u => u.Id).ToList();
 
             foreach (var userId in userIds)
             {
-                var user = _dbContext.Users.FirstOrDefault(u => u.Id == userId);
+                var user = _dbContext.Users.Include(u => u.Projects).FirstOrDefault(u => u.Id == userId);
 
-                if(user != null)
+                if (user != null)
                 {
                     user.Projects.Remove(project);
                     _dbContext.Users.Update(user);
@@ -106,41 +122,53 @@ namespace DergiMBackend.Services
             return true;
         }
 
-        public async Task AddUsersToProjectAsync(Guid projectId, List<string> userIds)
+        public async Task AddUserToProjectWithInvitationAsync(string projectInvitationId)
         {
-            var project = await _dbContext.Projects
-                .Include(p => p.Members)
-                .FirstOrDefaultAsync(p => p.Id == projectId);
+            var invitation = await _dbContext.ProjectInvitations
+                .Include(i => i.Project)
+                .Include(i => i.TargetUser)
+                .FirstOrDefaultAsync(i => i.Id == Guid.Parse(projectInvitationId));
 
-            if (project == null)
-                throw new KeyNotFoundException("Project not found.");
+            if (invitation == null) throw new KeyNotFoundException("No invitations with this id");
 
-            var users = await _dbContext.Users
-                .Where(u => userIds.Contains(u.Id))
-                .ToListAsync();
+            var project = invitation.Project;
+            var targetUser = invitation.TargetUser;
 
-            if (users.Count == 0)
-                throw new ArgumentException("No valid users found to add.");
+            if (!project.Members.Contains(targetUser))
+                project.Members.Add(targetUser);
+            if (!targetUser.Projects.Contains(project))
+                targetUser.Projects.Add(project);
 
-            
+            project.Invitations.Remove(invitation);
 
-            foreach (var user in users)
-            {
-                if (!project.Members.Contains(user))
-                {
-                    project.Members.Add(user);
-                }
-
-                if (!user.Projects.Contains(project))
-                {
-                    user.Projects.Add(project);
-                }
-            }
+            _dbContext.Users.Update(targetUser);
+            _dbContext.Projects.Update(project);
 
             await _dbContext.SaveChangesAsync();
         }
 
-        public async Task RemoveUsersFromProjectAsync(Guid projectId, List<string> userIds)
+        public async Task RejcetProjectInvitation(string projectInvitationId)
+        {
+            var invitation = await _dbContext.ProjectInvitations
+                .Include(i => i.Project)
+                .Include(i => i.TargetUser)
+                .FirstOrDefaultAsync(i => i.Id == Guid.Parse(projectInvitationId));
+
+            if (invitation == null) throw new KeyNotFoundException("No invitations with this id");
+
+            var project = invitation.Project;
+            var targetUser = invitation.TargetUser;
+
+            project.Invitations.Remove(invitation);
+            targetUser.ProjectInvitations.Remove(invitation);
+
+            _dbContext.Users.Update(targetUser);
+            _dbContext.Projects.Update(project);
+
+            await _dbContext.SaveChangesAsync();
+        }
+
+        public async Task RemoveUserFromProjectAsync(Guid projectId, string userId)
         {
             var project = await _dbContext.Projects
                 .Include(p => p.Members)
@@ -149,15 +177,16 @@ namespace DergiMBackend.Services
             if (project == null)
                 throw new KeyNotFoundException("Project not found.");
 
-            var users = await _dbContext.Users
-                .Where(u => userIds.Contains(u.Id))
-                .ToListAsync();
+            var user = _dbContext.Users.Include(u => u.Projects).FirstOrDefault(u => u.Id == userId);
 
-            if (users.Count == 0)
-                throw new ArgumentException("No valid users found to add.");
+            if (user == null)
+                throw new ArgumentException("This user does not exist in this project.");
 
-            users.ForEach(u => u.Projects.All(p => p.Id != project.Id));
-            project.Members.RemoveAll(u => userIds.Contains(u.Id));
+            user.Projects.Remove(project);
+            _dbContext.Users.Update(user);
+
+            project.Members.Remove(user);
+            _dbContext.Projects.Update(project);
 
             await _dbContext.SaveChangesAsync();
         }
@@ -168,22 +197,23 @@ namespace DergiMBackend.Services
                 .Include(p => p.Members)
                 .FirstOrDefaultAsync(p => p.Id == dto.ProjectId);
 
-            if(project == null)
+            if (project == null)
             {
                 throw new InvalidOperationException("Project not found.");
             }
 
             var targetUser = await _dbContext.Users
+                .Include(u => u.Projects)
                 .FirstOrDefaultAsync(u => u.Id == dto.TargetUserId);
 
-            if(targetUser == null)
+            if (targetUser == null)
             {
                 throw new KeyNotFoundException("Target user not found.");
             }
 
             var alreadyMember = targetUser.Projects.Contains(project);
 
-            if(alreadyMember) throw new Exception("Already member of the project.");
+            if (alreadyMember) throw new Exception("Already member of the project.");
 
             var invitation = new ProjectInvitation
             {
@@ -197,11 +227,11 @@ namespace DergiMBackend.Services
             };
 
             _dbContext.ProjectInvitations.Add(invitation);
+            targetUser.ProjectInvitations.Add(invitation);
+            _dbContext.Users.Update(targetUser);
             await _dbContext.SaveChangesAsync();
             return true;
         }
-
-
 
         public async Task SaveChangesAsync()
         {
