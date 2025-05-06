@@ -1,4 +1,5 @@
-﻿using DergiMBackend.Authorization;
+﻿using AutoMapper;
+using DergiMBackend.Authorization;
 using DergiMBackend.Models;
 using DergiMBackend.Models.Dtos;
 using DergiMBackend.Services;
@@ -14,11 +15,13 @@ namespace DergiMBackend.Controllers
     {
         private readonly IProjectService _projectService;
         private readonly ISessionService _sessionService;
+        private readonly IMapper _mapper;
 
-        public ProjectController(IProjectService projectService, ISessionService sessionService)
+        public ProjectController(IProjectService projectService, ISessionService sessionService, IMapper mapper)
         {
             _projectService = projectService;
             _sessionService = sessionService;
+            _mapper = mapper;
         }
 
         [HttpGet("{id:guid}")]
@@ -28,8 +31,10 @@ namespace DergiMBackend.Controllers
             var project = await _projectService.GetProjectByIdAsync(id);
             if (project == null)
                 return NotFound();
+            
+            var dto = _mapper.Map<ProjectDetailsDto>(project);
 
-            return Ok(project);
+            return Ok(dto);
         }
 
         [HttpGet("organisation/{organisationId:guid}")]
@@ -100,13 +105,13 @@ namespace DergiMBackend.Controllers
             return Ok(deleted);
         }
 
-        [HttpPut("{projectId:guid}/add-members")]
+        [HttpPut("{projectId:guid}/accept-invitation")]
         [SessionAuthorize]
-        public async Task<IActionResult> AddUsersToProject(Guid projectId, [FromBody] List<string> userIds)
+        public async Task<IActionResult> AcceptInvitation(Guid projectId, string invitationId)
         {
-            if (userIds == null || !userIds.Any())
+            if (invitationId == null || invitationId == "")
             {
-                return BadRequest("User IDs must be provided.");
+                return BadRequest("Invitation ID must be provided.");
             }
 
             var token = HttpContext.Request.Headers["SessionToken"].FirstOrDefault();
@@ -122,9 +127,15 @@ namespace DergiMBackend.Controllers
             if (project == null)
                 return NotFound(new { message = "Project not found" });
 
-            if (project.CreatorId != currentUserId) return Unauthorized();
+            var invitation = project.Invitations.FirstOrDefault(i => i.Id == Guid.Parse(invitationId));
 
-            await _projectService.AddUsersToProjectAsync(projectId, userIds);
+            if (invitation == null)
+                return NotFound(new { message = "Invitation not found" });
+
+            if (currentUserId != invitation.TargetUserId)
+                return Unauthorized(new { message = "You are not authorized to accept this invitation." });
+
+            await _projectService.AddUserToProjectWithInvitationAsync(invitationId);
 
             var updatedMembers = project.Members.Select(m => new UserDto
             {
@@ -137,17 +148,57 @@ namespace DergiMBackend.Controllers
             return Ok(new { Success = true, Message = "Users added to added project successfully.", UpdatedMembers = updatedMembers });
         }
 
-        [HttpPut("{projectId:guid}/remove-members")]
+        [HttpPut("{projectId:guid}/reject-invitation")]
         [SessionAuthorize]
-        public async Task<IActionResult> RemoveUsersFromProject(Guid projectId, [FromBody] List<string> userIds)
+        public async Task<IActionResult> RejectInvitation(Guid projectId, string invitationId)
         {
-         
-            if (userIds == null || !userIds.Any())
+            if (invitationId == null || invitationId == "")
             {
-                return BadRequest("User IDs must be provided.");
+                return BadRequest("Invitation ID must be provided.");
             }
 
+            var token = HttpContext.Request.Headers["SessionToken"].FirstOrDefault();
 
+            if (token == null) throw new UnauthorizedAccessException("Session token is missing");
+
+            var sessionUser = await _sessionService.ValidateSessionTokenAsync(token);
+            var currentUserId = sessionUser.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            var project = await _projectService.GetProjectByIdAsync(projectId);
+
+            if (project == null)
+                return NotFound(new { message = "Project not found" });
+
+            var invitation = project.Invitations.FirstOrDefault(i => i.Id == Guid.Parse(invitationId));
+
+            if (invitation == null)
+                return NotFound(new { message = "Invitation not found" });
+
+            if (currentUserId != invitation.TargetUserId)
+                return Unauthorized(new { message = "You are not authorized to accept this invitation." });
+
+            await _projectService.RejcetProjectInvitation(invitationId);
+
+            var updatedMembers = project.Members.Select(m => new UserDto
+            {
+                Id = m.Id,
+                Name = m.Name,
+                UserName = m.UserName ?? "",
+                Email = m.Email ?? "",
+            }).ToList();
+
+            return Ok(new { Success = true, Message = "Invitation rejeceted successfully.", UpdatedMembers = updatedMembers });
+        }
+
+        [HttpPut("{projectId:guid}/remove-member")]
+        [SessionAuthorize]
+        public async Task<IActionResult> RemoveUserFromProject(Guid projectId, string userId)
+        {
+         
+            if (userId == null || userId == "")
+            {
+                return BadRequest("User ID must be provided.");
+            }
 
             var token = HttpContext.Request.Headers["SessionToken"].FirstOrDefault();
 
@@ -165,7 +216,7 @@ namespace DergiMBackend.Controllers
             if (project.CreatorId != currentUserId) return Unauthorized();
 
 
-            await _projectService.RemoveUsersFromProjectAsync(projectId, userIds);
+            await _projectService.RemoveUserFromProjectAsync(projectId, userId);
 
 
             var updatedMembers = project.Members.Select(m => new UserDto
@@ -182,11 +233,38 @@ namespace DergiMBackend.Controllers
 
         [HttpPost("invite")]
         [SessionAuthorize]
-        public async Task<IActionResult> InviteUserToProject([FromBody] ProjectInvitationDto dto)
+        public async Task<IActionResult> InviteUserToProject([FromBody] CreateProjectInvitationDto createDto)
         {
             try
             {
-                var result = await _projectService.InviteUserToProjectAsync(dto);
+                var token = HttpContext.Request.Headers["SessionToken"].FirstOrDefault();
+
+                if (token == null) throw new UnauthorizedAccessException("Session token is missing");
+
+                var sessionUser = await _sessionService.ValidateSessionTokenAsync(token);
+                var currentUserId = sessionUser.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var project = await _projectService.GetProjectByIdAsync(createDto.ProjectId);
+
+                if(project == null)
+                    return NotFound(new { Success = false, Message = "Project not found.", StatusCode = 404 });
+
+                if (project.CreatorId != currentUserId)
+                {
+                    return Unauthorized(new { Success = false, Message = "You are not authorized to invite users to this project.", StatusCode = 401 });
+                }
+
+                ProjectInvitationDto invitation = new ProjectInvitationDto
+                {
+                    Id = new Guid(),
+                    Message= createDto.Message,
+                    ProjectId = createDto.ProjectId,
+                    TargetUserId = createDto.TargetUserId,
+                    SenderUserId = currentUserId,
+                    Status = InvitationStatus.Pending,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                var result = await _projectService.InviteUserToProjectAsync(invitation);
 
                 if (!result)
                     return BadRequest(new { Success = false, Message = "Failed to create invitation.", StatusCode = 400 });
