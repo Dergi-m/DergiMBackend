@@ -14,6 +14,7 @@ namespace DergiMBackend.DbContext
         public DbSet<OrganisationRole> OrganisationRoles { get; set; } = default!;
         public DbSet<Project> Projects { get; set; } = default!;
         public DbSet<ProjectFile> ProjectFiles { get; set; } = default!;
+        public DbSet<ProjectTask> ProjectTasks { get; set; } = default!;
         public DbSet<ProjectInvitation> ProjectInvitations { get; set; }
 
 
@@ -91,6 +92,39 @@ namespace DergiMBackend.DbContext
                 .WithOne(f => f.Project)
                 .HasForeignKey(f => f.ProjectId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // Project has many tasks
+            modelBuilder.Entity<Project>()
+                .HasMany(p => p.Tasks)
+                .WithOne(t => t.Project)
+                .HasForeignKey(t => t.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Task has one assigned user (optional)
+            modelBuilder.Entity<ProjectTask>()
+                .HasOne(t => t.AssignedToUser)
+                .WithMany()
+                .HasForeignKey(t => t.AssignedToUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Task has many attached files (many-to-many)
+            modelBuilder.Entity<ProjectTask>()
+                .HasMany(t => t.AttachedFiles)
+                .WithMany(f => f.ProjectTasks)
+                .UsingEntity<Dictionary<string, object>>(
+                    "ProjectTaskFiles",
+                    j => j
+                        .HasOne<ProjectFile>()
+                        .WithMany()
+                        .HasForeignKey("ProjectFileId")
+                        .OnDelete(DeleteBehavior.Restrict),
+                    j => j
+                        .HasOne<ProjectTask>()
+                        .WithMany()
+                        .HasForeignKey("ProjectTaskId")
+                        .OnDelete(DeleteBehavior.Restrict));
+
+
 
         }
     }
