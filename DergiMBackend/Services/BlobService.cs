@@ -15,7 +15,7 @@ namespace DergiMBackend.Services
             var connectionString = configuration["AzureBlob:ConnectionString"];
             var containerName = configuration["AzureBlob:ContainerName"];
             _containerClient = new BlobContainerClient(connectionString, containerName);
-            _containerClient.CreateIfNotExists(PublicAccessType.Blob);
+            _containerClient.CreateIfNotExists();
         }
 
         public async Task<string> UploadAsync(IFormFile file)
