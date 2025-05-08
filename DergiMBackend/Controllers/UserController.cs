@@ -60,6 +60,17 @@ namespace DergiMBackend.Controllers
             return Ok(user);
         }
 
+        [HttpGet("user")]
+        [SessionAuthorize]
+        public async Task<IActionResult> GetUserById(string userId)
+        {
+            var user = await _userService.GetUserByIdAsync(userId);
+            if (user == null)
+                return NotFound(new { error = "User not found" });
+
+            return Ok(user);
+        }
+
         [HttpGet]
         [SessionAuthorize]
         public async Task<IActionResult> GetAllUsers()
