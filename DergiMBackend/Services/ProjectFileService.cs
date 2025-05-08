@@ -42,13 +42,13 @@ public class ProjectFileService : IProjectFileService
             .ToListAsync();
     }
 
-    public async Task<bool> DeleteFileAsync(Guid fileId)
+    public async Task<ProjectFile?> DeleteFileAsync(Guid fileId)
     {
         var file = await _dbContext.ProjectFiles.FindAsync(fileId);
-        if (file == null) return false;
-
+        if (file == null) return null;
+        
         _dbContext.ProjectFiles.Remove(file);
         await _dbContext.SaveChangesAsync();
-        return true;
+        return file;
     }
 }
