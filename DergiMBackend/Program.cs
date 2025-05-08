@@ -55,8 +55,7 @@ modelBuilder.Services.AddScoped<IOrganisationService, OrganisationService>();
 modelBuilder.Services.AddScoped<IProjectService, ProjectService>();
 modelBuilder.Services.AddScoped<IProjectFileService, ProjectFileService>();
 modelBuilder.Services.AddScoped<IProjectTaskService, ProjectTaskService>();
-modelBuilder.Services.AddSingleton<BlobService>();
-
+modelBuilder.Services.AddScoped<IBlobService, BlobService>();
 
 modelBuilder.Services.AddHttpContextAccessor();
 
