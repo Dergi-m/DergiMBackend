@@ -56,7 +56,7 @@ public class AuthController(IAuthService authService, ISessionService sessionSer
             if (userId == null)
                 return Unauthorized(new { Success = false, Message = "Invalid session token." });
 
-            var user = await userService.GetUserAsync(userId);
+            var user = await userService.GetUserByIdAsync(userId);
 
             if (user == null)
                 return NotFound(new { Success = false, Message = "User not found." });
