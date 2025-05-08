@@ -137,6 +137,14 @@ namespace DergiMBackend.Services
             return _mapper.Map<UserDto>(user);
         }
 
+        public async Task<UserDto> GetUserByIdAsync(string uid)
+        {
+            var user = await _userManager.Users.Include(u => u.Projects).Include(u => u.ProjectInvitations).Include(u => u.OrganisationMemberships).FirstOrDefaultAsync(u => u.Id == uid)
+                ?? throw new Exception("User not found");
+
+            return _mapper.Map<UserDto>(user);
+        }
+
         public async Task<IEnumerable<UserDto>> GetUsersAsync()
         {
             var users = await _userManager.Users.ToListAsync();
