@@ -32,7 +32,7 @@ namespace DergiMBackend.Services
                 issuer: _apiSettings.Issuer,
                 audience: _apiSettings.Audience,
                 claims: claims,
-                expires: DateTime.UtcNow.AddHours(2),
+                expires: DateTime.UtcNow.AddHours(25),
                 signingCredentials: creds
             );
 
