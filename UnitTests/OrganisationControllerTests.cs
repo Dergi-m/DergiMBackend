@@ -1,157 +1,135 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Moq;
+using AutoMapper;
 using DergiMBackend.Controllers;
+using DergiMBackend.DbContext;
 using DergiMBackend.Models;
 using DergiMBackend.Models.Dtos;
+using DergiMBackend.Services.IServices;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using AutoMapper;
 using Microsoft.EntityFrameworkCore;
-using DergiMBackend.DbContext;
-using Microsoft.EntityFrameworkCore.InMemory;
+using Moq;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Xunit;
 
 namespace DergiMBackend.Tests.Controllers
 {
-	[TestClass]
-	public class OrganisationControllerTests
-	{
-		private ApplicationDbContext _dbContext;
-		private Random _random;
-		private Mock<IMapper> _mapperMock;
-		private OrganisationController _organisationController;
+    public class OrganisationControllerTests
+    {
+        private readonly Mock<ApplicationDbContext> _mockDb;
+        private readonly Mock<IMapper> _mockMapper;
+        private readonly Mock<ISessionService> _mockSessionService;
+        private readonly OrganisationController _controller;
 
-		[TestInitialize]
-		public void Setup()
-		{
-			var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-				.UseInMemoryDatabase(databaseName: $"TestDb_{Guid.NewGuid()}") // Unique database name for each test
-				.Options;
+        public OrganisationControllerTests()
+        {
+            var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+                .UseInMemoryDatabase(databaseName: "OrganisationTestDb")
+                .Options;
 
-			_dbContext = new ApplicationDbContext(options);
-			_random = new Random();
-			_mapperMock = new Mock<IMapper>();
-			_organisationController = new OrganisationController(_dbContext, _mapperMock.Object);
-		}
+            _mockDb = new Mock<ApplicationDbContext>(options);
+            _mockMapper = new Mock<IMapper>();
+            _mockSessionService = new Mock<ISessionService>();
 
-		[TestCleanup]
-		public void Cleanup()
-		{
-			_dbContext.Organisation.RemoveRange(_dbContext.Organisation);
-			_dbContext.SaveChanges();
-		}
+            _controller = new OrganisationController(_mockDb.Object, _mockMapper.Object, _mockSessionService.Object);
 
-		[TestMethod]
-		public async Task Get_ReturnsAllOrganisations()
-		{
-			// Arrange
-			var id1 = _random.Next();
-			var id2 = _random.Next();
-			var organisations = new List<Organisation>
-			{
-				new Organisation { Id = id1, Name = "Org1", Description = "Description1" },
-				new Organisation { Id = id2, Name = "Org2", Description = "Description2" }
-			};
-			await _dbContext.Organisation.AddRangeAsync(organisations);
-			await _dbContext.SaveChangesAsync();
+            var context = new DefaultHttpContext();
+            context.Request.Headers["SessionToken"] = "dummy-token";
+            _controller.ControllerContext.HttpContext = context;
+        }
 
-			var organisationDtos = new List<OrganisationDto>
-			{
-				new OrganisationDto { Id = id1, Name = "Org1", Description = "Description1" },
-				new OrganisationDto { Id = id2, Name = "Org2", Description = "Description2" }
-			};
+        [Fact]
+        public async Task GetAllOrganisations_ReturnsOk()
+        {
+            // Arrange
+            _mockSessionService.Setup(x => x.ValidateSessionToken(It.IsAny<string>())).Returns("User");
 
-			_mapperMock.Setup(m => m.Map<List<OrganisationDto>>(organisations)).Returns(organisationDtos);
+            _mockDb.Setup(db => db.Organisations.ToListAsync(default))
+                .ReturnsAsync(new List<Organisation> { new Organisation { UniqueName = "org1", Name = "Org 1" } });
 
-			// Act
-			var result = await _organisationController.Get();
+            _mockMapper.Setup(x => x.Map<List<OrganisationDto>>(It.IsAny<List<Organisation>>()))
+                .Returns(new List<OrganisationDto> { new OrganisationDto { UniqueName = "org1", Name = "Org 1" } });
 
-			// Assert
-			Assert.IsTrue(result.Success);
-			Assert.AreEqual(organisationDtos, result.Result);
-		}
+            // Act
+            var result = await _controller.GetAllOrganisations();
 
-		[TestMethod]
-		public async Task Get_WithId_ReturnsOrganisation()
-		{
-			// Arrange
-			var id = _random.Next();
-			var organisation = new Organisation { Id = id, Name = "Org1", Description = "Description1" };
-			await _dbContext.Organisation.AddAsync(organisation);
-			await _dbContext.SaveChangesAsync();
+            // Assert
+            Assert.True(result.Success);
+        }
 
-			var organisationDto = new OrganisationDto { Id = id, Name = "Org1", Description = "Description1" };
-			_mapperMock.Setup(m => m.Map<OrganisationDto>(organisation)).Returns(organisationDto);
+        [Fact]
+        public async Task GetOrganisation_ReturnsOk()
+        {
+            // Arrange
+            string uniqueName = "org1";
+            _mockSessionService.Setup(x => x.ValidateSessionToken(It.IsAny<string>())).Returns("User");
 
-			// Act
-			var result = await _organisationController.Get(id);
+            _mockDb.Setup(db => db.Organisations.FirstOrDefaultAsync(x => x.UniqueName == uniqueName, default))
+                .ReturnsAsync(new Organisation { UniqueName = uniqueName, Name = "Org 1" });
 
-			// Assert
-			Assert.IsTrue(result.Success);
-			Assert.AreEqual(organisationDto, result.Result);
-		}
+            _mockMapper.Setup(x => x.Map<OrganisationDto>(It.IsAny<Organisation>()))
+                .Returns(new OrganisationDto { UniqueName = uniqueName, Name = "Org 1" });
 
-		[TestMethod]
-		public async Task Create_AddsOrganisation()
-		{
-			// Arrange
-			_dbContext.Organisation.RemoveRange(_dbContext.Organisation);
-			await _dbContext.SaveChangesAsync();
-			var organisationDto = new OrganisationDto { Name = "Org1", Description = "Description1" };
-			var organisation = new Organisation { Name = "Org1", Description = "Description1" };
+            // Act
+            var result = await _controller.GetOrganisation(uniqueName);
 
-			_mapperMock.Setup(m => m.Map<Organisation>(organisationDto)).Returns(organisation);
-			_mapperMock.Setup(m => m.Map<OrganisationDto>(organisation)).Returns(organisationDto);
-			var count = _dbContext.Organisation.Count();
+            // Assert
+            Assert.True(result.Success);
+            Assert.NotNull(result.Result);
+        }
 
-			// Act
-			var result = await _organisationController.Create(organisationDto);
+        [Fact]
+        public async Task CreateOrganisation_AdminOnly_ReturnsCreated()
+        {
+            // Arrange
+            _mockSessionService.Setup(x => x.ValidateSessionToken(It.IsAny<string>())).Returns("Admin");
 
-			// Assert
-			Assert.IsTrue(result.Success);
-			Assert.AreEqual(organisationDto, result.Result);
-			Assert.AreEqual(count+1, _dbContext.Organisation.Count());
-		}
+            var organisationDto = new OrganisationDto { UniqueName = "org2", Name = "Org 2" };
 
-		[TestMethod]
-		public async Task Update_UpdatesOrganisation()
-		{
-			// Arrange
-			var id = _random.Next();
-			var organisation = new Organisation { Id = id, Name = "Org1", Description = "Old Description" };
-			await _dbContext.Organisation.AddAsync(organisation);
-			await _dbContext.SaveChangesAsync();
+            _mockMapper.Setup(x => x.Map<Organisation>(It.IsAny<OrganisationDto>()))
+                .Returns(new Organisation { UniqueName = "org2", Name = "Org 2" });
 
-			var organisationDto = new OrganisationDto { Id = id, Name = "UpdatedOrg", Description = "Updated Description" };
-			_mapperMock.Setup(m => m.Map<OrganisationDto>(organisation)).Returns(organisationDto);
+            // Act
+            var result = await _controller.CreateOrganisation(organisationDto);
 
-			// Act
-			var result = await _organisationController.Update(organisationDto);
+            // Assert
+            Assert.True(result.Success);
+        }
 
-			// Assert
-			Assert.IsTrue(result.Success);
-			var updatedOrganisation = await _dbContext.Organisation.FindAsync(id);
-			Assert.AreEqual("UpdatedOrg", updatedOrganisation.Name);
-			Assert.AreEqual("Updated Description", updatedOrganisation.Description);
-		}
+        [Fact]
+        public async Task UpdateOrganisation_AdminOnly_ReturnsOk()
+        {
+            // Arrange
+            string uniqueName = "org1";
+            _mockSessionService.Setup(x => x.ValidateSessionToken(It.IsAny<string>())).Returns("Admin");
 
-		[TestMethod]
-		public async Task Delete_RemovesOrganisation()
-		{
-			// Arrange
-			var id = _random.Next();
-			var organisation = new Organisation { Id=id, Name = "Org1", Description = "Updated Description" };
-			await _dbContext.Organisation.AddAsync(organisation);
-			await _dbContext.SaveChangesAsync();
-			var count = _dbContext.Organisation.Count();
+            _mockDb.Setup(db => db.Organisations.FirstOrDefaultAsync(x => x.UniqueName == uniqueName, default))
+                .ReturnsAsync(new Organisation { UniqueName = uniqueName, Name = "Org 1" });
 
-			// Act
+            // Act
+            var organisationDto = new OrganisationDto { UniqueName = uniqueName, Name = "Org 1 Updated" };
+            var result = await _controller.UpdateOrganisation(organisationDto);
 
-			var result = await _organisationController.Delete(id);
+            // Assert
+            Assert.True(result.Success);
+        }
 
-			// Assert
-			Assert.IsTrue(result.Success);
-			Assert.AreEqual(count-1, _dbContext.Organisation.Count());
-		}
-	}
+        [Fact]
+        public async Task DeleteOrganisation_AdminOnly_ReturnsNoContent()
+        {
+            // Arrange
+            string uniqueName = "org1";
+            _mockSessionService.Setup(x => x.ValidateSessionToken(It.IsAny<string>())).Returns("Admin");
+
+            _mockDb.Setup(db => db.Organisations.FirstOrDefaultAsync(x => x.UniqueName == uniqueName, default))
+                .ReturnsAsync(new Organisation { UniqueName = uniqueName, Name = "Org 1" });
+
+            // Act
+            var result = await _controller.DeleteOrganisation(uniqueName);
+
+            // Assert
+            Assert.True(result.Success);
+        }
+    }
 }

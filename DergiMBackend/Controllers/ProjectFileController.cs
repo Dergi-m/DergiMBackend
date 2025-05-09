@@ -24,22 +24,22 @@ namespace DergiMBackend.Controllers
 
         }
 
-        [HttpPost("upload")]
-        public async Task<IActionResult> UploadFileToBlob([FromForm] IFormFile file, [FromForm] Guid projectId)
+        [HttpPost("upload:{projectId:guid}")]
+        public async Task<IActionResult> UploadFileToBlob(IFormFile file, Guid projectId)
         {
-            if (file == null || file.Length == 0)
+            if (file.Length == 0)
                 return BadRequest("Invalid file.");
 
             var allowedTypes = new[] { "image/png", "application/pdf", "image/jpeg" };
             if (!allowedTypes.Contains(file.ContentType))
                 return BadRequest("Unsupported file type.");
 
-
-            var fileUrl = await _blobService.UploadAsync(file);
+            var fileId = Guid.NewGuid();
+            var fileUrl = await _blobService.UploadAsync(file, fileId);
 
             var projectFile = new ProjectFile
             {
-                Id = Guid.NewGuid(),
+                Id = fileId,
                 FileUrl = fileUrl,
                 LocalFileUrl = file.FileName,
                 ProjectId = projectId,
@@ -82,10 +82,19 @@ namespace DergiMBackend.Controllers
             return Ok(new { success = true, message = "File deleted successfully." });
         }
 
-        [HttpPut]
-        public async Task<IActionResult> UpdateFile([FromBody] UpdateProjectFileDto dto)
+        [HttpPut("{fileId}")]
+        public async Task<IActionResult> UpdateFile(IFormFile file, Guid fileId, string blobName)
         {
-            var updatedFile = await _projectFileService.UpdateFileAsync(dto);
+            var fileUrl = await _blobService.UpdateAsync(blobName, file);
+            
+            var newFile = new UpdateProjectFileDto
+            {
+                Id = fileId,
+                FileUrl = fileUrl,
+                LocalFileUrl = file.FileName
+            };
+            
+            var updatedFile = await _projectFileService.UpdateFileAsync(newFile);
             if (updatedFile == null)
                 return NotFound(new { success = false, message = "File not found." });
 
@@ -98,11 +107,9 @@ namespace DergiMBackend.Controllers
             var blobResult = await _blobService.GetBlobAsync(blobName);
             if (blobResult is null)
                 return NotFound();
-
+            
             var (content, contentType) = blobResult.Value;
             return File(content, contentType, blobName);
         }
-
-
     }
 }

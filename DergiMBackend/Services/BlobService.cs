@@ -18,17 +18,16 @@ namespace DergiMBackend.Services
             _containerClient.CreateIfNotExists();
         }
 
-        public async Task<string> UploadAsync(IFormFile file)
+        public async Task<string> UploadAsync(IFormFile file, Guid fileId)
         {
-            var blobClient = _containerClient.GetBlobClient(Guid.NewGuid() + Path.GetExtension(file.FileName));
-
-
+            var blobClient = _containerClient.GetBlobClient(fileId + Path.GetExtension(file.FileName));
+            
             using (var stream = file.OpenReadStream())
             {
                 await blobClient.UploadAsync(stream, new BlobHttpHeaders { ContentType = file.ContentType });
             }
 
-            return blobClient.Name; // Store blob name in DB
+            return blobClient.Name;
         }
 
         public async Task<(byte[] Content, string ContentType)?> GetBlobAsync(string blobName)
@@ -40,6 +39,27 @@ namespace DergiMBackend.Services
             using var ms = new MemoryStream();
             await download.Value.Content.CopyToAsync(ms);
             return (ms.ToArray(), download.Value.Details.ContentType);
+        }
+        
+        public async Task<string> UpdateAsync(string blobName, IFormFile file)
+        {
+            var blobClient = _containerClient.GetBlobClient(blobName);
+            
+            if (!await blobClient.ExistsAsync())
+            {
+                throw new DirectoryNotFoundException("File not found for update");
+            }
+            
+            
+            using (var stream = file.OpenReadStream())
+            {
+                await blobClient.UploadAsync(
+                    stream,
+                    new BlobHttpHeaders { ContentType = file.ContentType }
+                );
+            }
+            
+            return blobClient.Name;
         }
 
         public async Task<bool> DeleteAsync(string blobName)
