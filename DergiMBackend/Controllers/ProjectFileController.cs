@@ -24,7 +24,7 @@ namespace DergiMBackend.Controllers
 
         }
 
-        [HttpPost("upload:{projectId:guid}")]
+        [HttpPost("upload/{projectId:guid}")]
         public async Task<IActionResult> UploadFileToBlob(IFormFile file, Guid projectId)
         {
             if (file.Length == 0)
