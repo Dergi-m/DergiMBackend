@@ -41,7 +41,9 @@ namespace DergiMBackend.Controllers
                 "application/msword", // .doc
                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
                 "application/vnd.ms-powerpoint", // .ppt
-                "application/vnd.openxmlformats-officedocument.presentationml.presentation" // .pptx
+                "application/vnd.openxmlformats-officedocument.presentationml.presentation", // .pptx
+                "application/vnd.ms-excel", // .xls
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" // .xlsx
             };
             
             if (!allowedTypes.Contains(file.ContentType))
@@ -101,7 +103,7 @@ namespace DergiMBackend.Controllers
         }
 
         [HttpPut("{fileId}")]
-        public async Task<IActionResult> UpdateFile(IFormFile file, Guid fileId, string blobName)
+        public async Task<IActionResult> UpdateFile([FromForm] IFormFile file, [FromForm] string blobName , Guid fileId)
         {
             var fileUrl = await _blobService.UpdateAsync(blobName, file);
             
@@ -110,9 +112,13 @@ namespace DergiMBackend.Controllers
                 Id = fileId,
                 FileUrl = fileUrl,
                 LocalFileUrl = file.FileName
+                
             };
+
+            await _blobService.UpdateAsync(blobName, file);
             
             var updatedFile = await _projectFileService.UpdateFileAsync(newFile);
+            
             if (updatedFile == null)
                 return NotFound(new { success = false, message = "File not found." });
 
