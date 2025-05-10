@@ -25,14 +25,32 @@ namespace DergiMBackend.Controllers
         }
 
         [HttpPost("upload/{projectId:guid}")]
-        public async Task<IActionResult> UploadFileToBlob(IFormFile file, Guid projectId)
+        public async Task<IActionResult> UploadFileToBlob([FromForm] IFormFile file, Guid projectId)
         {
             if (file.Length == 0)
                 return BadRequest("Invalid file.");
 
-            var allowedTypes = new[] { "image/png", "application/pdf", "image/jpeg" };
+            var allowedTypes = new[]
+            {
+                "image/png",
+                "image/jpeg",
+                "image/jpg",
+                "image/gif",
+                "image/webp",
+                "application/pdf",
+                "application/msword", // .doc
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
+                "application/vnd.ms-powerpoint", // .ppt
+                "application/vnd.openxmlformats-officedocument.presentationml.presentation" // .pptx
+            };
+            
             if (!allowedTypes.Contains(file.ContentType))
                 return BadRequest("Unsupported file type.");
+
+            if (file.Length > 10000000)
+            {
+                return BadRequest("File size is too large. Upload file size should be less than 10MB.");
+            }
 
             var fileId = Guid.NewGuid();
             var fileUrl = await _blobService.UploadAsync(file, fileId);
