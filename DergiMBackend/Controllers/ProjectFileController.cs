@@ -120,14 +120,14 @@ namespace DergiMBackend.Controllers
         }
 
         [HttpGet("download/{blobName}")]
-        public async Task<IActionResult> Download(string blobName)
+        public async Task<IActionResult> Download(string blobName, [FromQuery] string fileName)
         {
             var blobResult = await _blobService.GetBlobAsync(blobName);
             if (blobResult is null)
                 return NotFound();
             
             var (content, contentType) = blobResult.Value;
-            return File(content, contentType, blobName);
+            return File(content, contentType, fileName);
         }
     }
 }
