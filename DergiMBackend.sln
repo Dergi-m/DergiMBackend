@@ -5,7 +5,7 @@ VisualStudioVersion = 17.13.35919.96
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DergiMBackend", "DergiMBackend\DergiMBackend.csproj", "{BB4D3D78-73C0-4CFE-8325-E1525B5056C4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnitTests", "UnitTests\UnitTests.csproj", "{14251253-4A1B-451D-84FC-F37BB7F62F49}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DergiMBackend.Tests", "DergiMBackend.Tests\DergiMBackend.Tests.csproj", "{A782DA3D-6B8E-4B62-A495-589BDB147B8C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,10 +17,10 @@ Global
 		{BB4D3D78-73C0-4CFE-8325-E1525B5056C4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BB4D3D78-73C0-4CFE-8325-E1525B5056C4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BB4D3D78-73C0-4CFE-8325-E1525B5056C4}.Release|Any CPU.Build.0 = Release|Any CPU
-		{14251253-4A1B-451D-84FC-F37BB7F62F49}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{14251253-4A1B-451D-84FC-F37BB7F62F49}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{14251253-4A1B-451D-84FC-F37BB7F62F49}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{14251253-4A1B-451D-84FC-F37BB7F62F49}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A782DA3D-6B8E-4B62-A495-589BDB147B8C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A782DA3D-6B8E-4B62-A495-589BDB147B8C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A782DA3D-6B8E-4B62-A495-589BDB147B8C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A782DA3D-6B8E-4B62-A495-589BDB147B8C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
