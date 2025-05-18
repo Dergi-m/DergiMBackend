@@ -9,7 +9,7 @@ using DergiMBackend.Controllers;
 using DergiMBackend.Models;
 using DergiMBackend.Models.Dtos;
 using DergiMBackend.Services.IServices;
-
+namespace DergiMBackend.Tests;
 public class OrganisationRoleControllerTests
 {
     private readonly Mock<IOrganisationRoleService> _roleService = new();

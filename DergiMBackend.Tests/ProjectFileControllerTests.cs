@@ -1,16 +1,12 @@
-using Xunit;
 using Moq;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Threading.Tasks;
 using DergiMBackend.Controllers;
 using DergiMBackend.Models;
 using DergiMBackend.Models.Dtos;
 using DergiMBackend.Services.IServices;
+namespace DergiMBackend.Tests;
 
 public class ProjectFileControllerTests
 {
@@ -23,7 +19,7 @@ public class ProjectFileControllerTests
         _controller = new ProjectFileController(_projectFileService.Object, _blobService.Object);
     }
 
-    private IFormFile CreateMockFile(string fileName, string contentType, int size = 1000)
+    private static IFormFile CreateMockFile(string fileName, string contentType, int size = 1000)
     {
         var fileMock = new Mock<IFormFile>();
         var content = new MemoryStream(new byte[size]);

@@ -1,15 +1,13 @@
-using Xunit;
 using Moq;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
 using System.Security.Claims;
-using System.Threading.Tasks;
-using System.Collections.Generic;
 using DergiMBackend.Controllers;
 using DergiMBackend.Models.Dtos;
 using DergiMBackend.Services.IServices;
 
+namespace DergiMBackend.Tests;
 public class AuthControllerTests
 {
     private readonly Mock<IAuthService> _authService = new();
@@ -44,7 +42,7 @@ public class AuthControllerTests
         // Assert
         var ok = result as OkObjectResult;
         ok.Should().NotBeNull();
-        ok!.Value.Should().BeEquivalentTo(token);
+        ok.Value.Should().BeEquivalentTo(token);
     }
 
     [Fact]
@@ -119,7 +117,7 @@ public class AuthControllerTests
 
         _userService
             .Setup(s => s.GetUserByIdAsync(userId))
-            .ReturnsAsync((UserDto?)null);
+            .Returns(Task.FromResult<UserDto>(null!));
 
         // Act
         var result = await _controller.GetCurrentSession();

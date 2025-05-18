@@ -1,17 +1,14 @@
-using Xunit;
 using Moq;
 using FluentAssertions;
 using AutoMapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
 using System.Security.Claims;
-using System.Threading.Tasks;
 using DergiMBackend.Controllers;
 using DergiMBackend.Models;
 using DergiMBackend.Models.Dtos;
 using DergiMBackend.Services.IServices;
+namespace DergiMBackend.Tests;
 
 public class ProjectControllerTests
 {
@@ -40,7 +37,7 @@ public class ProjectControllerTests
         _controller.ControllerContext.HttpContext.Request.Headers["SessionToken"] = token;
     }
 
-    private ClaimsPrincipal CreateMockUser(string userId)
+    private static ClaimsPrincipal CreateMockUser(string userId)
     {
         var claims = new List<Claim> { new Claim(ClaimTypes.NameIdentifier, userId) };
         var identity = new ClaimsIdentity(claims, "mock");

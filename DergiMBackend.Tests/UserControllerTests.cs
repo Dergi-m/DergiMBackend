@@ -1,13 +1,10 @@
-using Xunit;
 using Moq;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using DergiMBackend.Controllers;
 using DergiMBackend.Models.Dtos;
 using DergiMBackend.Services.IServices;
+namespace DergiMBackend.Tests;
 
 public class UserControllerTests
 {
@@ -107,7 +104,8 @@ public class UserControllerTests
     {
         var username = "unknown";
 
-        _userService.Setup(s => s.GetUserAsync(username)).ReturnsAsync((UserDto?)null);
+        _userService.Setup(s => s.GetUserAsync(username))
+            .Returns(Task.FromResult<UserDto>(null!));
 
         var result = await _controller.GetUser(username);
 
@@ -133,7 +131,8 @@ public class UserControllerTests
     {
         var userId = "notfound";
 
-        _userService.Setup(s => s.GetUserByIdAsync(userId)).ReturnsAsync((UserDto?)null);
+        _userService.Setup(s => s.GetUserByIdAsync(userId))
+            .Returns(Task.FromResult<UserDto>(null!));
 
         var result = await _controller.GetUserById(userId);
 

@@ -1,14 +1,11 @@
-using Xunit;
 using Moq;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using DergiMBackend.Controllers;
 using DergiMBackend.Models;
 using DergiMBackend.Models.Dtos;
 using DergiMBackend.Services.IServices;
+namespace DergiMBackend.Tests;
 
 public class ProjectTaskControllerTests
 {
